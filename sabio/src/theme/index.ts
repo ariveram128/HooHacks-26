@@ -5,6 +5,7 @@ export const colors = {
   terracotta: '#C2553A',
   terracottaLight: '#D4725A',
   terracottaDark: '#A33E26',
+  darkGreen: '#1a4d2e',
   teal: '#1A6B5E',
   tealLight: '#2A8B7A',
   tealDark: '#134A42',

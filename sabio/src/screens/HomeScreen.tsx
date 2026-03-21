@@ -13,6 +13,7 @@ import FadeIn from '../components/FadeIn';
 import DillowAvatar from '../components/DillowAvatar';
 import StreakBadge from '../components/StreakBadge';
 import BottomNav from '../components/BottomNav';
+import LessonsScreen from './LessonsScreen';
 import {
   BookIcon,
   MicIcon,
@@ -79,6 +80,15 @@ export default function HomeScreen() {
   const [showTranslation, setShowTranslation] = useState(false);
 
   const currentPhrase = phrases[phraseIndex];
+
+  if (activeNav === 'learn') {
+    return (
+      <View style={styles.root}>
+        <LessonsScreen />
+        <BottomNav activeTab={activeNav} onTabPress={setActiveNav} />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
