@@ -4,6 +4,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { ElevenLabsProvider } from '@elevenlabs/react-native';
 import {
   InstrumentSerif_400Regular,
   InstrumentSerif_400Regular_Italic,
@@ -42,12 +43,14 @@ export default function App() {
   }
 
   return (
-    <SafeAreaProvider>
-      <View style={styles.root} onLayout={onLayoutRootView}>
-        <StatusBar style="dark" />
-        <RootNavigator />
-      </View>
-    </SafeAreaProvider>
+    <ElevenLabsProvider>
+      <SafeAreaProvider>
+        <View style={styles.root} onLayout={onLayoutRootView}>
+          <StatusBar style="dark" />
+          <RootNavigator />
+        </View>
+      </SafeAreaProvider>
+    </ElevenLabsProvider>
   );
 }
 

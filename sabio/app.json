@@ -1,7 +1,8 @@
 {
   "expo": {
-    "name": "sabio",
+    "name": "Sabio",
     "slug": "sabio",
+    "scheme": "sabio",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,11 +13,24 @@
       "backgroundColor": "#F5EDE0"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.sabio.app",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "Sabio needs microphone access so you can have voice conversations with Dillow, your AI Spanish companion."
+      }
     },
     "android": {
+      "package": "com.sabio.app",
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.INTERNET",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.BLUETOOTH",
+        "android.permission.WAKE_LOCK"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#F5EDE0",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
@@ -27,7 +41,9 @@
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-font"
+      "expo-font",
+      "@livekit/react-native-expo-plugin",
+      "@config-plugins/react-native-webrtc"
     ]
   }
 }

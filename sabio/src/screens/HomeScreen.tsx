@@ -9,6 +9,8 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import FadeIn from '../components/FadeIn';
 import DillowAvatar from '../components/DillowAvatar';
 import StreakBadge from '../components/StreakBadge';
@@ -23,6 +25,7 @@ import {
   ChevronRightIcon,
 } from '../components/Icons';
 import { colors, fonts, radii } from '../theme';
+import type { RootStackParamList } from '../navigation';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -74,6 +77,7 @@ const quickActions: QuickAction[] = [
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [activeNav, setActiveNav] = useState('home');
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -131,7 +135,7 @@ export default function HomeScreen() {
         {/* ─── Dillow AI Chat Card ─── */}
         <FadeIn delay={350}>
           <Pressable
-            onPress={() => {}}
+            onPress={() => navigation.navigate('DillowChat')}
             style={({ pressed }) => [
               styles.dillowPressable,
               pressed && styles.dillowPressed,
@@ -277,7 +281,16 @@ export default function HomeScreen() {
         </FadeIn>
       </ScrollView>
 
-      <BottomNav activeTab={activeNav} onTabPress={setActiveNav} />
+      <BottomNav
+        activeTab={activeNav}
+        onTabPress={(tabId) => {
+          if (tabId === 'chat') {
+            navigation.navigate('DillowChat');
+          } else {
+            setActiveNav(tabId);
+          }
+        }}
+      />
     </View>
   );
 }
