@@ -23,10 +23,16 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
-import { lessons, sections, Lesson } from '../data/lessons';
+import { lessons, Lesson } from '../data/lessons';
 import { getProgress, LessonProgress } from '../store/lessonProgress';
 import BottomNav from '../components/BottomNav';
-import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon } from '../components/Icons';
+import {
+  ChevronLeftIcon, ChevronRightIcon, BookIcon,
+  AlphaIcon, NumericIcon, EarIcon, HandIcon, IdCardIcon, TextIcon, CubeIcon,
+  SwitchAccountIcon, ScaleIcon, ClockIcon, BoltIcon, QuestionBubbleIcon,
+  PaletteIcon, HistoryIcon, UpdateIcon, RocketIcon, ThoughtIcon, BranchIcon,
+  DecisionIcon, QuoteIcon,
+} from '../components/Icons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
@@ -40,7 +46,6 @@ const FREQUENCY = 0.005;
 const NODE_SPACING = 110;
 const TOP_PADDING = 160;
 const HEX_SIZE = 52;
-const SECTION_HEADER_HEIGHT = 70;
 
 // ═══════════════════════════════════════════
 // SECTION ACCENTS
@@ -52,12 +57,34 @@ const SECTION_ACCENT: Record<string, { primary: string; dark: string; light: str
   copa: { primary: colors.marigold, dark: colors.marigoldDark, light: colors.marigoldLight },
 };
 
-const SECTION_ICON: Record<string, (p: { size: number; color: string }) => React.ReactNode> = {
-  raices: (p) => <BookIcon {...p} />,
-  brotes: (p) => <NotesIcon {...p} />,
-  ramas: (p) => <ChatIcon {...p} />,
-  copa: (p) => <GamepadIcon {...p} />,
+const LESSON_ICON: Record<string, (p: { size: number; color: string }) => React.ReactNode> = {
+  // Raíces
+  alfabeto: (p) => <AlphaIcon {...p} />,
+  numeros: (p) => <NumericIcon {...p} />,
+  pronunciacion: (p) => <EarIcon {...p} />,
+  saludos: (p) => <HandIcon {...p} />,
+  presentaciones: (p) => <IdCardIcon {...p} />,
+  // Brotes
+  articulos: (p) => <TextIcon {...p} />,
+  sustantivos: (p) => <CubeIcon {...p} />,
+  pronombres: (p) => <SwitchAccountIcon {...p} />,
+  'ser-estar': (p) => <ScaleIcon {...p} />,
+  'presente-regular': (p) => <ClockIcon {...p} />,
+  // Ramas
+  'presente-irregular': (p) => <BoltIcon {...p} />,
+  preguntas: (p) => <QuestionBubbleIcon {...p} />,
+  adjetivos: (p) => <PaletteIcon {...p} />,
+  preterito: (p) => <HistoryIcon {...p} />,
+  imperfecto: (p) => <UpdateIcon {...p} />,
+  // Copa
+  futuro: (p) => <RocketIcon {...p} />,
+  subjuntivo: (p) => <ThoughtIcon {...p} />,
+  condicional: (p) => <BranchIcon {...p} />,
+  'por-para': (p) => <DecisionIcon {...p} />,
+  expresiones: (p) => <QuoteIcon {...p} />,
 };
+
+const DEFAULT_ICON = (p: { size: number; color: string }) => <BookIcon {...p} />;
 
 // ═══════════════════════════════════════════
 // VINE MATH
@@ -74,17 +101,8 @@ type NodeItem =
 function buildNodeList(): { items: NodeItem[]; totalHeight: number } {
   const items: NodeItem[] = [];
   let y = TOP_PADDING;
-  let lastSectionId = '';
 
   lessons.forEach((lesson, i) => {
-    if (lesson.sectionId !== lastSectionId) {
-      const sec = sections.find((s) => s.id === lesson.sectionId);
-      if (sec) {
-        items.push({ type: 'section', sectionId: sec.id, title: sec.title, subtitle: sec.subtitle, y });
-        y += SECTION_HEADER_HEIGHT;
-      }
-      lastSectionId = lesson.sectionId;
-    }
     items.push({ type: 'lesson', lesson, index: i, y });
     y += NODE_SPACING;
   });
@@ -100,9 +118,9 @@ const VinePath: React.FC<{ containerHeight: number }> = ({ containerHeight }) =>
 
   const safeH = Math.round(containerHeight);
   const points: string[] = [];
-  for (let y = -50; y <= safeH + 50; y += 3) {
+  for (let y = -200; y <= safeH + 50; y += 3) {
     const x = vineX(y);
-    points.push(`${y === -50 ? 'M' : 'L'}${x.toFixed(1)},${y}`);
+    points.push(`${y === -200 ? 'M' : 'L'}${x.toFixed(1)},${y}`);
   }
   const pathD = points.join(' ');
 
@@ -111,14 +129,16 @@ const VinePath: React.FC<{ containerHeight: number }> = ({ containerHeight }) =>
       <Defs>
         <SvgGradient id="vineGrad" x1="0" y1="0" x2="0" y2="1">
           <Stop offset="0%" stopColor={colors.teal} />
-          <Stop offset="30%" stopColor={colors.tealLight} />
-          <Stop offset="55%" stopColor={colors.terracotta} />
-          <Stop offset="80%" stopColor={colors.marigold} />
-          <Stop offset="100%" stopColor={colors.marigoldLight} />
+          <Stop offset="25%" stopColor={colors.tealLight} />
+          <Stop offset="50%" stopColor={colors.marigold} />
+          <Stop offset="75%" stopColor={colors.marigoldLight} />
+          <Stop offset="100%" stopColor={colors.terracotta} />
         </SvgGradient>
       </Defs>
-      {/* Soft glow */}
-      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.08)" strokeWidth={16} strokeLinecap="round" />
+      {/* Fading glow layers */}
+      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.02)" strokeWidth={32} strokeLinecap="round" />
+      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.04)" strokeWidth={20} strokeLinecap="round" />
+      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.08)" strokeWidth={12} strokeLinecap="round" />
       {/* Main vine */}
       <Path d={pathD} fill="none" stroke="url(#vineGrad)" strokeWidth={4} strokeLinecap="round" />
     </Svg>
@@ -128,7 +148,7 @@ const VinePath: React.FC<{ containerHeight: number }> = ({ containerHeight }) =>
 // ═══════════════════════════════════════════
 // COLOR-BY-POSITION (matches vine gradient)
 // ═══════════════════════════════════════════
-// Vine gradient: 0% teal → 30% tealLight → 55% terracotta → 80% marigold → 100% marigoldLight
+// Vine gradient: 0% teal → 25% tealLight → 50% marigold → 75% marigoldLight → 100% terracotta
 // We lerp between hex colors based on y / containerHeight
 
 function hexToRgb(hex: string): [number, number, number] {
@@ -146,10 +166,10 @@ function lerpColor(a: string, b: string, t: number): string {
 
 const VINE_COLOR_STOPS: { pos: number; color: string }[] = [
   { pos: 0, color: colors.teal },
-  { pos: 0.3, color: colors.tealLight },
-  { pos: 0.55, color: colors.terracotta },
-  { pos: 0.8, color: colors.marigold },
-  { pos: 1, color: colors.marigoldLight },
+  { pos: 0.25, color: colors.tealLight },
+  { pos: 0.5, color: colors.marigold },
+  { pos: 0.75, color: colors.marigoldLight },
+  { pos: 1, color: colors.terracotta },
 ];
 
 function vineColorAt(t: number): string {
@@ -433,7 +453,7 @@ const HexNode: React.FC<HexNodeProps> = ({ lesson, yPos, status, onPress, animDe
             ]}
           >
             {/* Lesson icon (section-based) */}
-            {(SECTION_ICON[lesson.sectionId] ?? SECTION_ICON.raices)({ size: 22, color: iconColor })}
+            {(LESSON_ICON[lesson.id] ?? DEFAULT_ICON)({ size: 22, color: iconColor })}
 
             {/* Completed checkmark overlay */}
             {isCompleted && (
@@ -531,69 +551,6 @@ const nodeStyles = StyleSheet.create({
   },
 });
 
-// ═══════════════════════════════════════════
-// SECTION HEADER (inline)
-// ═══════════════════════════════════════════
-const SectionHeaderNode: React.FC<{ sectionId: string; title: string; subtitle: string; yPos: number; animDelay: number }> = ({
-  sectionId, title, subtitle, yPos, animDelay,
-}) => {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const accent = SECTION_ACCENT[sectionId] ?? SECTION_ACCENT.raices;
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-    }, animDelay);
-    return () => clearTimeout(t);
-  }, []);
-
-  const xPos = vineX(yPos + 20);
-
-  return (
-    <Animated.View
-      style={{
-        position: 'absolute',
-        top: yPos - 10,
-        left: xPos + HEX_SIZE / 2 + 16,
-        right: 20,
-        opacity: fadeAnim,
-        zIndex: 5,
-      }}
-      pointerEvents="none"
-    >
-      {/* Thin accent line */}
-      <View style={[secHeaderStyles.accentBar, { backgroundColor: accent.primary }]} />
-      <View style={secHeaderStyles.row}>
-        <Text style={[secHeaderStyles.title, { color: accent.primary }]}>{title}</Text>
-        <Text style={secHeaderStyles.subtitle}>{subtitle}</Text>
-      </View>
-    </Animated.View>
-  );
-};
-
-const secHeaderStyles = StyleSheet.create({
-  accentBar: {
-    width: 24,
-    height: 2.5,
-    borderRadius: 2,
-    marginBottom: 6,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 8,
-  },
-  title: {
-    fontFamily: fonts.serif,
-    fontSize: 22,
-  },
-  subtitle: {
-    fontFamily: fonts.light,
-    fontSize: 13,
-    color: colors.warmGray,
-    letterSpacing: 0.5,
-  },
-});
 
 // ═══════════════════════════════════════════
 // PROGRESS BAR
@@ -661,7 +618,7 @@ export default function LessonsScreen() {
           const lessonItem = nodeItems.find((item) => item.type === 'lesson' && item.index === target);
           if (lessonItem) {
             setTimeout(() => {
-              scrollRef.current?.scrollTo({ y: lessonItem.y - SCREEN_H * 0.35, animated: true });
+              scrollRef.current?.scrollTo({ y: lessonItem.y - 180, animated: true });
             }, 500);
           }
         }
@@ -695,9 +652,6 @@ export default function LessonsScreen() {
   const selectedAccent = selectedLesson
     ? (SECTION_ACCENT[selectedLesson.sectionId] ?? SECTION_ACCENT.raices)
     : SECTION_ACCENT.raices;
-  const selectedSection = selectedLesson
-    ? sections.find((s) => s.id === selectedLesson.sectionId)
-    : null;
 
   let animIdx = 0;
 
@@ -709,7 +663,8 @@ export default function LessonsScreen() {
         style={styles.scrollView}
         contentContainerStyle={{ height: containerHeight }}
         showsVerticalScrollIndicator={false}
-        bounces
+        bounces={false}
+        overScrollMode="never"
       >
         {/* Vine SVG */}
         <VinePath containerHeight={containerHeight} />
@@ -726,18 +681,7 @@ export default function LessonsScreen() {
 
         {/* Render nodes */}
         {nodeItems.map((item, i) => {
-          if (item.type === 'section') {
-            return (
-              <SectionHeaderNode
-                key={`sec-${item.sectionId}`}
-                sectionId={item.sectionId}
-                title={item.title}
-                subtitle={item.subtitle}
-                yPos={item.y}
-                animDelay={200 + animIdx++ * 60}
-              />
-            );
-          }
+          if (item.type !== 'lesson') return null;
           return (
             <HexNode
               key={item.lesson.id}
@@ -772,10 +716,11 @@ export default function LessonsScreen() {
           </View>
 
           <ProgressBar progress={progressPct} />
-          <Text style={styles.progressLabel}>
+          
+        </View>
+        <Text style={styles.progressLabel}>
             {completedCount} of {lessons.length} complete
           </Text>
-        </View>
       </LinearGradient>
 
       {/* Bottom sheet overlay */}
@@ -802,16 +747,9 @@ export default function LessonsScreen() {
           <>
             <View style={styles.sheetHeader}>
               <View style={[styles.sheetHex, { backgroundColor: selectedAccent.primary }]}>
-                {(SECTION_ICON[selectedLesson.sectionId] ?? SECTION_ICON.raices)({ size: 26, color: colors.white })}
+                {(LESSON_ICON[selectedLesson.id] ?? DEFAULT_ICON)({ size: 26, color: colors.white })}
               </View>
               <View style={{ flex: 1 }}>
-                {selectedSection && (
-                  <View style={[styles.sheetBadge, { backgroundColor: selectedAccent.primary + '18' }]}>
-                    <Text style={[styles.sheetBadgeText, { color: selectedAccent.primary }]}>
-                      {selectedSection.title} — {selectedSection.subtitle}
-                    </Text>
-                  </View>
-                )}
                 <Text style={styles.sheetTitle}>{selectedLesson.title}</Text>
                 <Text style={styles.sheetSubtitle}>{selectedLesson.subtitle}</Text>
               </View>
@@ -876,6 +814,8 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
+    paddingTop: 20,
+    backgroundColor: colors.cream,
   },
   headerTop: {
     flexDirection: 'row',
@@ -984,19 +924,6 @@ const styles = StyleSheet.create({
     borderRadius: 52 * 0.3,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  sheetBadge: {
-    alignSelf: 'flex-start',
-    borderRadius: radii.full,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    marginBottom: 4,
-  },
-  sheetBadgeText: {
-    fontFamily: fonts.medium,
-    fontSize: 10,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
   },
   sheetTitle: {
     fontFamily: fonts.serif,

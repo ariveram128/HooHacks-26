@@ -207,6 +207,70 @@ export const CheckCircleIcon = ({ size = 20, color = 'currentColor' }: IconProps
   </Svg>
 );
 
+// ── Icons from @expo/vector-icons ──
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+
+export const AlphaIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="alpha-a-box-outline" size={size} color={color} />
+);
+export const NumericIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="numeric" size={size} color={color} />
+);
+export const EarIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="ear-hearing" size={size} color={color} />
+);
+export const HandIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="hand-wave-outline" size={size} color={color} />
+);
+export const IdCardIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="card-account-details-outline" size={size} color={color} />
+);
+export const TextIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="format-text" size={size} color={color} />
+);
+export const CubeIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="cube-outline" size={size} color={color} />
+);
+export const SwitchAccountIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="account-switch-outline" size={size} color={color} />
+);
+export const ScaleIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="scale-balance" size={size} color={color} />
+);
+export const ClockIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Feather name="clock" size={size} color={color} />
+);
+export const BoltIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="lightning-bolt-outline" size={size} color={color} />
+);
+export const QuestionBubbleIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="comment-question-outline" size={size} color={color} />
+);
+export const PaletteIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="palette-outline" size={size} color={color} />
+);
+export const HistoryIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="history" size={size} color={color} />
+);
+export const UpdateIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="update" size={size} color={color} />
+);
+export const RocketIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="rocket-launch-outline" size={size} color={color} />
+);
+export const ThoughtIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="thought-bubble-outline" size={size} color={color} />
+);
+export const BranchIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="source-branch" size={size} color={color} />
+);
+export const DecisionIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="arrow-decision-outline" size={size} color={color} />
+);
+export const QuoteIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <MaterialCommunityIcons name="format-quote-open" size={size} color={color} />
+);
+
 export const ChevronLeftIcon = ({ size = 18, color = 'currentColor' }: IconProps) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <Polyline points="15,18 9,12 15,6" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
