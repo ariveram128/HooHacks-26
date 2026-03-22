@@ -416,17 +416,18 @@ export default function DillowChatScreen() {
     setIsPaused(next);
     try {
       conversation.setMicMuted(next);
-      conversation.setVolume({ volume: next ? 0 : 1 });
+      if (next) {
+        // Interrupt any current agent speech by signaling user activity
+        conversation.sendUserActivity();
+        conversation.sendContextualUpdate(
+          'The user has paused the conversation. Stay completely silent and do not say anything at all until the user resumes. Do not respond to any audio.',
+        );
+      } else {
+        conversation.sendContextualUpdate(
+          'The user has resumed the conversation. You may respond normally again.',
+        );
+      }
     } catch {}
-    if (next) {
-      conversation.sendContextualUpdate(
-        'The user has paused the conversation. Stay completely silent. Do not respond to any audio until the user resumes.',
-      );
-    } else {
-      conversation.sendContextualUpdate(
-        'The user has resumed the conversation. You may respond normally again.',
-      );
-    }
   }, [conversation]);
 
   const handleOrbPress = () => {

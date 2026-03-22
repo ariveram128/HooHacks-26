@@ -11,7 +11,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeIcon, BookIcon, ChatIcon, MicIcon, UserIcon } from './Icons';
 import { colors, fonts } from '../theme';
-import type { TabId } from '../navigation';
+import type { TabId } from '../navigation/tabContext';
 
 const SCREEN_W = Dimensions.get('window').width;
 const TAB_COUNT = 5;

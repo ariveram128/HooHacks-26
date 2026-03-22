@@ -25,7 +25,8 @@ import {
 } from '../components/Icons';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, fonts, radii } from '../theme';
-import { type RootStackParamList, useTabSwitch } from '../navigation';
+import type { RootStackParamList } from '../navigation';
+import { useTabSwitch } from '../navigation/tabContext';
 import { useAuth } from '../context/AuthContext';
 import { getProgress as getLessonProgress, LessonProgress } from '../store/lessonProgress';
 import { getProgress as getPracticeProgress, PracticeProgress } from '../store/practiceProgress';

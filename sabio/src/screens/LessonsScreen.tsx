@@ -9,6 +9,7 @@ import {
   Easing,
   Platform,
   Pressable,
+  Modal,
 } from 'react-native';
 import Svg, {
   Path,
@@ -26,7 +27,7 @@ import { colors, fonts, spacing, radii } from '../theme';
 import { lessons, Lesson } from '../data/lessons';
 import { getProgress, LessonProgress } from '../store/lessonProgress';
 import {
-  ChevronLeftIcon, ChevronRightIcon, BookIcon,
+  ChevronRightIcon, BookIcon,
   AlphaIcon, NumericIcon, EarIcon, HandIcon, IdCardIcon, TextIcon, CubeIcon,
   SwitchAccountIcon, ScaleIcon, ClockIcon, BoltIcon, QuestionBubbleIcon,
   PaletteIcon, HistoryIcon, UpdateIcon, RocketIcon, ThoughtIcon, BranchIcon,
@@ -589,6 +590,7 @@ export default function LessonsScreen() {
     lastViewedLessonId: null,
   });
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   const sheetAnim = useRef(new Animated.Value(SCREEN_H)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -635,17 +637,26 @@ export default function LessonsScreen() {
 
   const showSheet = (lesson: Lesson) => {
     setSelectedLesson(lesson);
-    Animated.parallel([
-      Animated.spring(sheetAnim, { toValue: 0, friction: 9, tension: 50, useNativeDriver: true }),
-      Animated.timing(overlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-    ]).start();
+    setSheetVisible(true);
+    // Reset positions before animating in
+    sheetAnim.setValue(SCREEN_H);
+    overlayAnim.setValue(0);
+    requestAnimationFrame(() => {
+      Animated.parallel([
+        Animated.spring(sheetAnim, { toValue: 0, friction: 9, tension: 50, useNativeDriver: true }),
+        Animated.timing(overlayAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      ]).start();
+    });
   };
 
   const dismissSheet = () => {
     Animated.parallel([
       Animated.timing(sheetAnim, { toValue: SCREEN_H, duration: 250, useNativeDriver: true }),
       Animated.timing(overlayAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-    ]).start(() => setSelectedLesson(null));
+    ]).start(() => {
+      setSheetVisible(false);
+      setSelectedLesson(null);
+    });
   };
 
   const selectedAccent = selectedLesson
@@ -707,9 +718,7 @@ export default function LessonsScreen() {
       >
         <View style={styles.headerInner}>
           <View style={styles.headerTop}>
-            <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <ChevronLeftIcon size={22} color={colors.charcoal} />
-            </Pressable>
+            <View style={{ width: 40 }} />
             <Text style={styles.headerTitle}>Lessons</Text>
             <View style={{ width: 40 }} />
           </View>
@@ -722,55 +731,58 @@ export default function LessonsScreen() {
           </Text>
       </LinearGradient>
 
-      {/* Bottom sheet overlay */}
-      <Animated.View
-        style={[styles.overlay, { opacity: overlayAnim }]}
-        pointerEvents={selectedLesson ? 'auto' : 'none'}
-      >
-        <Pressable style={StyleSheet.absoluteFill} onPress={dismissSheet} />
-      </Animated.View>
+      {/* Bottom sheet modal */}
+      <Modal visible={sheetVisible} transparent animationType="none" statusBarTranslucent>
+        <View style={styles.modalRoot}>
+          {/* Overlay */}
+          <Animated.View
+            style={[styles.overlay, { opacity: overlayAnim }]}
+          >
+            <Pressable style={StyleSheet.absoluteFill} onPress={dismissSheet} />
+          </Animated.View>
 
-      {/* Bottom sheet */}
-      <Animated.View
-        style={[
-          styles.sheet,
-          { paddingBottom: Math.max(insets.bottom, 20) },
-          { transform: [{ translateY: sheetAnim }] },
-        ]}
-        pointerEvents={selectedLesson ? 'auto' : 'none'}
-      >
-        <View style={styles.sheetHandle} />
-        <View style={[styles.sheetAccent, { backgroundColor: selectedAccent.primary }]} />
+          {/* Sheet */}
+          <Animated.View
+            style={[
+              styles.sheet,
+              { paddingBottom: Math.max(insets.bottom, 20) },
+              { transform: [{ translateY: sheetAnim }] },
+            ]}
+          >
+            <View style={styles.sheetHandle} />
+            <View style={[styles.sheetAccent, { backgroundColor: selectedAccent.primary }]} />
 
-        {selectedLesson && (
-          <>
-            <View style={styles.sheetHeader}>
-              <View style={[styles.sheetHex, { backgroundColor: selectedAccent.primary }]}>
-                {(LESSON_ICON[selectedLesson.id] ?? DEFAULT_ICON)({ size: 26, color: colors.white })}
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.sheetTitle}>{selectedLesson.title}</Text>
-                <Text style={styles.sheetSubtitle}>{selectedLesson.subtitle}</Text>
-              </View>
-            </View>
+            {selectedLesson && (
+              <>
+                <View style={styles.sheetHeader}>
+                  <View style={[styles.sheetHex, { backgroundColor: selectedAccent.primary }]}>
+                    {(LESSON_ICON[selectedLesson.id] ?? DEFAULT_ICON)({ size: 26, color: colors.white })}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sheetTitle}>{selectedLesson.title}</Text>
+                    <Text style={styles.sheetSubtitle}>{selectedLesson.subtitle}</Text>
+                  </View>
+                </View>
 
-            <Pressable
-              style={({ pressed }) => [
-                styles.startBtn,
-                { backgroundColor: selectedAccent.primary },
-                pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-              ]}
-              onPress={() => {
-                dismissSheet();
-                navigation.navigate('LessonDetail', { lessonId: selectedLesson.id });
-              }}
-            >
-              <Text style={styles.startBtnText}>Start Lesson</Text>
-              <ChevronRightIcon size={16} color={colors.white} />
-            </Pressable>
-          </>
-        )}
-      </Animated.View>
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.startBtn,
+                    { backgroundColor: selectedAccent.primary },
+                    pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+                  ]}
+                  onPress={() => {
+                    dismissSheet();
+                    navigation.navigate('LessonDetail', { lessonId: selectedLesson.id });
+                  }}
+                >
+                  <Text style={styles.startBtnText}>Start Lesson</Text>
+                  <ChevronRightIcon size={16} color={colors.white} />
+                </Pressable>
+              </>
+            )}
+          </Animated.View>
+        </View>
+      </Modal>
 
     </View>
   );
@@ -857,23 +869,21 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // ── Overlay + sheet ──
+  // ── Modal + sheet ──
+  modalRoot: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(42,35,32,0.3)',
-    zIndex: 50,
   },
   sheet: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     backgroundColor: colors.white,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     paddingHorizontal: spacing.xl,
     paddingTop: 14,
-    zIndex: 100,
     overflow: 'hidden',
     ...Platform.select({
       ios: {

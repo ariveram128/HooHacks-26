@@ -1,10 +1,12 @@
-import React, { useRef, useState, useCallback, createContext, useContext } from 'react';
+import React, { useRef, useState, useCallback } from 'react';
 import { ActivityIndicator, View, Animated, Dimensions, StyleSheet } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { colors } from '../theme';
 import CustomTabBar from '../components/BottomNav';
+import { TabSwitchProvider } from './tabContext';
+import type { TabId } from './tabContext';
 
 import LoginScreen from '../screens/LoginScreen';
 import SignUpScreen from '../screens/SignUpScreen';
@@ -32,22 +34,16 @@ export type RootStackParamList = {
   ColorGame: undefined;
 };
 
+export type { TabId } from './tabContext';
+export { useTabSwitch } from './tabContext';
+
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 const MainStack = createNativeStackNavigator<RootStackParamList>();
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
-// Tab order: Home(0)  Lessons(1)  [Dillow=skip]  Practice(2)  Account(3)
-// The paging strip has 4 pages; Dillow is not a page, it pushes a stack screen.
-const TAB_IDS = ['home', 'learn', 'chat', 'practice', 'account'] as const;
-export type TabId = (typeof TAB_IDS)[number];
-
 // Maps tab id → page index in the horizontal strip (Dillow has no page)
 const PAGE_INDEX: Record<string, number> = { home: 0, learn: 1, practice: 2, account: 3 };
-
-// Context so child screens can switch tabs
-const TabSwitchContext = createContext<(id: TabId) => void>(() => {});
-export const useTabSwitch = () => useContext(TabSwitchContext);
 
 const pages: { id: TabId; component: React.ComponentType<any> }[] = [
   { id: 'home', component: HomeScreen },
@@ -85,7 +81,7 @@ function TabsScreen({ navigation }: any) {
   const activeTabId = pages[activePageIdx].id;
 
   return (
-    <TabSwitchContext.Provider value={switchTo}>
+    <TabSwitchProvider value={switchTo}>
       <View style={styles.container}>
         {/* Horizontal strip of all tab screens */}
         <Animated.View
@@ -110,7 +106,7 @@ function TabsScreen({ navigation }: any) {
         {/* Persistent bottom nav */}
         <CustomTabBar activeTab={activeTabId} onTabPress={switchTo} />
       </View>
-    </TabSwitchContext.Provider>
+    </TabSwitchProvider>
   );
 }
 
