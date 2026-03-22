@@ -43,7 +43,7 @@ export default function App() {
   }
 
   return (
-    <ElevenLabsProvider>
+    <ElevenLabsProvider audioSessionConfig={{ allowMixingWithOthers: true }}>
       <SafeAreaProvider>
         <View style={styles.root} onLayout={onLayoutRootView}>
           <StatusBar style="dark" />

@@ -4,6 +4,7 @@ import {
   Text,
   FlatList,
   Pressable,
+  TouchableOpacity,
   StyleSheet,
   Animated,
   KeyboardAvoidingView,
@@ -16,22 +17,29 @@ import type { ConversationStatus, Role } from '@elevenlabs/react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation';
 import DillowAvatar from '../components/DillowAvatar';
-import { MicIcon, ChevronRightIcon } from '../components/Icons';
-import { colors, fonts, radii } from '../theme';
-
-type ChatMessage = {
-  id: string;
-  text: string;
-  source: 'user' | 'agent';
-  timestamp: number;
-};
+import TranscriptBubble from '../components/TranscriptBubble';
+import type { ChatMessage } from '../components/TranscriptBubble';
+import SuggestionBar from '../components/SuggestionBar';
+import {
+  MicIcon,
+  ChevronRightIcon,
+  EyeIcon,
+  EyeOffIcon,
+  NotesIcon,
+  PlayIcon,
+} from '../components/Icons';
+import { colors, fonts } from '../theme';
 
 const AGENT_ID = process.env.EXPO_PUBLIC_AGENT_ID ?? '';
 
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
 export default function DillowChatScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
+  const navigation = useNavigation<Nav>();
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const ringAnim = useRef(new Animated.Value(0)).current;
@@ -40,44 +48,57 @@ export default function DillowChatScreen() {
   const [textInput, setTextInput] = useState('');
   const [isStarting, setIsStarting] = useState(false);
   const [mode, setMode] = useState<'speaking' | 'listening'>('listening');
+  const [showTranscript, setShowTranscript] = useState(true);
+  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const isPausedRef = useRef(false);
+  const sessionActive = useRef(false);
 
-  const addMessage = useCallback((text: string, source: 'user' | 'agent') => {
-    const msg: ChatMessage = {
-      id: `${Date.now()}-${Math.random()}`,
-      text,
-      source,
-      timestamp: Date.now(),
-    };
-    setMessages((prev) => [...prev, msg]);
-  }, []);
+  const addMessage = useCallback(
+    (text: string, source: 'user' | 'agent') => {
+      const msg: ChatMessage = {
+        id: `${Date.now()}-${Math.random()}`,
+        text,
+        source,
+        timestamp: Date.now(),
+      };
+      setMessages((prev) => [...prev, msg]);
+    },
+    []
+  );
 
   const conversation = useConversation({
     onConnect: () => {
       console.log('Connected to Dillow');
+      sessionActive.current = true;
     },
     onDisconnect: () => {
       console.log('Disconnected from Dillow');
+      sessionActive.current = false;
+      setIsPaused(false);
     },
-    onError: (message: string) => {
-      console.error('Conversation error:', message);
-    },
-    onMessage: (props: { message: string; source: 'user' | 'ai'; role: Role }) => {
+    onError: (message: string) =>
+      console.error('Conversation error:', message),
+    onMessage: (props: {
+      message: string;
+      source: 'user' | 'ai';
+      role: Role;
+    }) => {
       if (props.message) {
         addMessage(props.message, props.role === 'user' ? 'user' : 'agent');
       }
     },
-    onModeChange: ({ mode: newMode }: { mode: 'speaking' | 'listening' }) => {
-      setMode(newMode);
-    },
-    onStatusChange: ({ status }: { status: ConversationStatus }) => {
-      console.log('Status:', status);
-    },
+    onModeChange: ({ mode: m }: { mode: 'speaking' | 'listening' }) =>
+      setMode(m),
+    onStatusChange: ({ status }: { status: ConversationStatus }) =>
+      console.log('Status:', status),
   });
 
-  // Pulse animation for mic button when connected
+  // ── Animations ──
+
   useEffect(() => {
     if (conversation.status === 'connected' && mode === 'listening') {
-      const pulse = Animated.loop(
+      const p = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
             toValue: 1.12,
@@ -91,17 +112,15 @@ export default function DillowChatScreen() {
           }),
         ])
       );
-      pulse.start();
-      return () => pulse.stop();
-    } else {
-      pulseAnim.setValue(1);
+      p.start();
+      return () => p.stop();
     }
+    pulseAnim.setValue(1);
   }, [conversation.status, mode]);
 
-  // Ring animation when Dillow is speaking
   useEffect(() => {
     if (conversation.status === 'connected' && mode === 'speaking') {
-      const ring = Animated.loop(
+      const r = Animated.loop(
         Animated.sequence([
           Animated.timing(ringAnim, {
             toValue: 1,
@@ -115,49 +134,97 @@ export default function DillowChatScreen() {
           }),
         ])
       );
-      ring.start();
-      return () => ring.stop();
-    } else {
-      ringAnim.setValue(0);
+      r.start();
+      return () => r.stop();
     }
+    ringAnim.setValue(0);
   }, [conversation.status, mode]);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }, 100);
+    if (messages.length > 0 && showTranscript) {
+      setTimeout(
+        () => flatListRef.current?.scrollToEnd({ animated: true }),
+        100
+      );
     }
-  }, [messages.length]);
+  }, [messages.length, showTranscript]);
+
+  // ── Cleanup on unmount / navigate away ──
+
+  const conversationRef = useRef(conversation);
+  conversationRef.current = conversation;
+
+  useEffect(() => {
+    return () => {
+      if (sessionActive.current) {
+        conversationRef.current.endSession().catch(() => {});
+      }
+    };
+  }, []);
+
+  // ── Actions ──
 
   const startConversation = async () => {
     if (isStarting) return;
     setIsStarting(true);
     try {
       await conversation.startSession({ agentId: AGENT_ID });
-    } catch (error) {
-      console.error('Failed to start conversation:', error);
+    } catch (e) {
+      console.error('Failed to start:', e);
     } finally {
       setIsStarting(false);
     }
   };
 
-  const endConversation = async () => {
+  const endConversation = useCallback(async () => {
+    if (!sessionActive.current) return;
+    sessionActive.current = false;
+    isPausedRef.current = false;
+    setIsPaused(false);
     try {
-      await conversation.endSession();
-    } catch (error) {
-      console.error('Failed to end conversation:', error);
+      await conversation.endSession('user');
+    } catch (e) {
+      console.error('End session error:', e);
     }
-  };
+  }, [conversation]);
+
+  const handleGoBack = useCallback(() => {
+    endConversation();
+    navigation.goBack();
+  }, [endConversation, navigation]);
+
+  const pauseDebounce = useRef(false);
+  const togglePause = useCallback(() => {
+    if (!sessionActive.current || pauseDebounce.current) return;
+    pauseDebounce.current = true;
+    setTimeout(() => { pauseDebounce.current = false; }, 800);
+
+    const next = !isPausedRef.current;
+    isPausedRef.current = next;
+    setIsPaused(next);
+    try {
+      conversation.setMicMuted(next);
+    } catch {}
+    if (next) {
+      conversation.sendContextualUpdate(
+        'The user has paused the conversation. Stay completely silent. Do not respond to any audio until the user resumes.'
+      );
+    } else {
+      conversation.sendContextualUpdate(
+        'The user has resumed the conversation. You may respond normally again.'
+      );
+    }
+  }, [conversation]);
 
   const handleSendText = () => {
-    const trimmed = textInput.trim();
-    if (!trimmed || conversation.status !== 'connected') return;
-    conversation.sendUserMessage(trimmed);
+    const t = textInput.trim();
+    if (!t || conversation.status !== 'connected') return;
+    conversation.sendUserMessage(t);
     setTextInput('');
     Keyboard.dismiss();
   };
+
+  // ── Derived ──
 
   const isConnected = conversation.status === 'connected';
   const isDisconnected = conversation.status === 'disconnected';
@@ -171,46 +238,25 @@ export default function DillowChatScreen() {
     outputRange: [0.4, 0],
   });
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => {
-    const isAgent = item.source === 'agent';
-    return (
-      <View style={[
-        styles.messageRow,
-        isAgent ? styles.messageRowAgent : styles.messageRowUser,
-      ]}>
-        {isAgent && (
-          <View style={styles.messageAvatar}>
-            <DillowAvatar size={32} />
-          </View>
-        )}
-        <View style={[
-          styles.messageBubble,
-          isAgent ? styles.agentBubble : styles.userBubble,
-        ]}>
-          <Text style={[
-            styles.messageText,
-            isAgent ? styles.agentText : styles.userText,
-          ]}>
-            {item.text}
-          </Text>
-        </View>
-      </View>
-    );
-  };
-
   const statusColor = isConnected
-    ? colors.teal
+    ? isPaused
+      ? colors.marigold
+      : colors.teal
     : conversation.status === 'connecting'
     ? colors.marigold
     : colors.warmGrayLight;
 
   const statusLabel = isConnected
-    ? mode === 'speaking'
+    ? isPaused
+      ? 'Paused'
+      : mode === 'speaking'
       ? 'Dillow is speaking...'
       : 'Listening...'
     : conversation.status === 'connecting'
     ? 'Connecting...'
     : 'Tap the mic to start';
+
+  // ── Render ──
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
@@ -221,7 +267,10 @@ export default function DillowChatScreen() {
         end={{ x: 1, y: 1 }}
         style={styles.header}
       >
-        <Pressable onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <Pressable
+          onPress={handleGoBack}
+          style={styles.headerBtn}
+        >
           <View style={{ transform: [{ rotate: '180deg' }] }}>
             <ChevronRightIcon size={22} color={colors.cream} />
           </View>
@@ -232,11 +281,31 @@ export default function DillowChatScreen() {
           <View>
             <Text style={styles.headerTitle}>Dillow</Text>
             <View style={styles.statusRow}>
-              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+              <View
+                style={[styles.statusDot, { backgroundColor: statusColor }]}
+              />
               <Text style={styles.statusText}>{statusLabel}</Text>
             </View>
           </View>
         </View>
+
+        <Pressable
+          onPress={() => setShowTranscript((v) => !v)}
+          style={styles.headerBtn}
+        >
+          {showTranscript ? (
+            <EyeIcon size={20} color={colors.cream} />
+          ) : (
+            <EyeOffIcon size={20} color={colors.cream} />
+          )}
+        </Pressable>
+
+        <Pressable
+          onPress={() => navigation.navigate('Notes')}
+          style={styles.headerBtn}
+        >
+          <NotesIcon size={20} color={colors.cream} />
+        </Pressable>
 
         {isConnected && (
           <Pressable onPress={endConversation} style={styles.endBtn}>
@@ -245,44 +314,63 @@ export default function DillowChatScreen() {
         )}
       </LinearGradient>
 
-      {/* ─── Chat Messages ─── */}
+      {/* ─── Chat Area ─── */}
       <KeyboardAvoidingView
         style={styles.chatArea}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
       >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.messageList}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <View style={styles.emptyAvatarWrap}>
-                <DillowAvatar size={80} />
+        {showTranscript ? (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            renderItem={({ item }) => (
+              <TranscriptBubble
+                message={item}
+                isActive={activeMessageId === item.id}
+                onActivate={() => setActiveMessageId(item.id)}
+              />
+            )}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.messageList}
+            showsVerticalScrollIndicator={false}
+            onScrollBeginDrag={() => setActiveMessageId(null)}
+            ListEmptyComponent={
+              <View style={styles.emptyState}>
+                <View style={styles.emptyAvatarWrap}>
+                  <DillowAvatar size={80} />
+                </View>
+                <Text style={styles.emptyTitle}>Habla con Dillow</Text>
+                <Text style={styles.emptySubtitle}>
+                  Tap the microphone below to start a voice conversation.
+                  Dillow speaks Spanish and English — just talk naturally.
+                </Text>
               </View>
-              <Text style={styles.emptyTitle}>Habla con Dillow</Text>
-              <Text style={styles.emptySubtitle}>
-                Tap the microphone below to start a voice conversation.
-                Dillow speaks Spanish and English — just talk naturally.
-              </Text>
-            </View>
-          }
-        />
+            }
+          />
+        ) : (
+          <View style={styles.hiddenView}>
+            <DillowAvatar size={64} />
+            <Text style={styles.hiddenTitle}>
+              {isConnected ? 'Conversation active' : 'Transcript hidden'}
+            </Text>
+            <Text style={styles.hiddenHint}>
+              Tap the eye icon to show the transcript
+            </Text>
+          </View>
+        )}
 
-        {/* ─── Text Input (visible when connected) ─── */}
-        {isConnected && (
+        {/* ─── Suggestions ─── */}
+        {isConnected && <SuggestionBar />}
+
+        {/* ─── Text Input ─── */}
+        {isConnected && showTranscript && (
           <View style={styles.textInputRow}>
             <TextInput
               style={styles.textInput}
               value={textInput}
-              onChangeText={(text) => {
-                setTextInput(text);
-                if (text.length > 0) {
-                  conversation.sendUserActivity();
-                }
+              onChangeText={(t) => {
+                setTextInput(t);
+                if (t.length > 0) conversation.sendUserActivity();
               }}
               placeholder="Or type a message..."
               placeholderTextColor={colors.warmGrayLight}
@@ -292,7 +380,10 @@ export default function DillowChatScreen() {
             />
             <Pressable
               onPress={handleSendText}
-              style={[styles.sendBtn, !textInput.trim() && styles.sendBtnDisabled]}
+              style={[
+                styles.sendBtn,
+                !textInput.trim() && styles.sendBtnDisabled,
+              ]}
               disabled={!textInput.trim()}
             >
               <ChevronRightIcon size={18} color={colors.white} />
@@ -303,42 +394,54 @@ export default function DillowChatScreen() {
 
       {/* ─── Mic Button ─── */}
       <View style={[styles.micArea, { paddingBottom: insets.bottom + 16 }]}>
-        {/* Ring animation when speaking */}
-        {isConnected && mode === 'speaking' && (
-          <Animated.View style={[
-            styles.micRing,
-            {
-              transform: [{ scale: ringScale }],
-              opacity: ringOpacity,
-            },
-          ]} />
+        {isConnected && mode === 'speaking' && !isPaused && (
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.micRing,
+              {
+                transform: [{ scale: ringScale }],
+                opacity: ringOpacity,
+              },
+            ]}
+          />
         )}
 
-        <Animated.View style={{ transform: [{ scale: isConnected && mode === 'listening' ? pulseAnim : 1 }] }}>
-          <Pressable
-            onPress={isDisconnected ? startConversation : endConversation}
-            style={({ pressed }) => [
-              styles.micButton,
-              isConnected && styles.micButtonActive,
-              isConnected && mode === 'speaking' && styles.micButtonSpeaking,
-              pressed && styles.micButtonPressed,
-            ]}
-            disabled={isStarting || conversation.status === 'connecting'}
-          >
-            {isStarting || conversation.status === 'connecting' ? (
-              <Text style={styles.micButtonLabel}>...</Text>
-            ) : (
-              <MicIcon
-                size={32}
-                color={isConnected ? colors.white : colors.cream}
-              />
-            )}
-          </Pressable>
-        </Animated.View>
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={() => {
+            const s = conversation.status;
+            if (s === 'disconnected') {
+              startConversation();
+            } else if (s === 'connected') {
+              togglePause();
+            }
+          }}
+          disabled={isStarting || conversation.status === 'connecting'}
+          style={[
+            styles.micButton,
+            isConnected && !isPaused && styles.micActive,
+            isConnected && mode === 'speaking' && !isPaused && styles.micSpeaking,
+            isConnected && isPaused && styles.micPaused,
+          ]}
+        >
+          {isStarting || conversation.status === 'connecting' ? (
+            <Text style={styles.micLabel}>...</Text>
+          ) : isConnected && isPaused ? (
+            <PlayIcon size={28} color={colors.cream} />
+          ) : (
+            <MicIcon
+              size={32}
+              color={isConnected ? colors.white : colors.cream}
+            />
+          )}
+        </TouchableOpacity>
 
         <Text style={styles.micHint}>
           {isConnected
-            ? 'Tap to end conversation'
+            ? isPaused
+              ? 'Paused — tap to resume'
+              : 'Tap to pause'
             : isStarting
             ? 'Connecting to Dillow...'
             : '¿Sobre qué te gustaría hablar?'}
@@ -360,9 +463,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 14,
-    gap: 12,
+    gap: 10,
   },
-  backBtn: {
+  headerBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
@@ -448,50 +551,23 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // ── Messages ──
-  messageRow: {
-    flexDirection: 'row',
-    marginBottom: 14,
-    maxWidth: '85%',
+  // ── Hidden Transcript ──
+  hiddenView: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 40,
+    gap: 12,
   },
-  messageRowAgent: {
-    alignSelf: 'flex-start',
-    alignItems: 'flex-end',
-  },
-  messageRowUser: {
-    alignSelf: 'flex-end',
-  },
-  messageAvatar: {
-    marginRight: 10,
-    paddingBottom: 4,
-  },
-  messageBubble: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 18,
-    maxWidth: '100%',
-  },
-  agentBubble: {
-    backgroundColor: colors.creamLight,
-    borderWidth: 1,
-    borderColor: colors.creamDark,
-    borderBottomLeftRadius: 4,
-  },
-  userBubble: {
-    backgroundColor: colors.terracotta,
-    borderBottomRightRadius: 4,
-  },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 22,
-  },
-  agentText: {
+  hiddenTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 20,
     color: colors.charcoal,
-    fontFamily: fonts.regular,
   },
-  userText: {
-    color: colors.cream,
+  hiddenHint: {
     fontFamily: fonts.regular,
+    fontSize: 13,
+    color: colors.warmGray,
   },
 
   // ── Text Input ──
@@ -536,6 +612,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.creamDark,
   },
+  micPaused: {
+    backgroundColor: colors.warmGray,
+  },
   micRing: {
     position: 'absolute',
     top: 12,
@@ -558,16 +637,16 @@ const styles = StyleSheet.create({
     shadowRadius: 16,
     elevation: 10,
   },
-  micButtonActive: {
+  micActive: {
     backgroundColor: colors.teal,
   },
-  micButtonSpeaking: {
+  micSpeaking: {
     backgroundColor: colors.marigold,
   },
-  micButtonPressed: {
+  micPressed: {
     transform: [{ scale: 0.92 }],
   },
-  micButtonLabel: {
+  micLabel: {
     color: colors.cream,
     fontSize: 24,
     fontFamily: fonts.bold,

@@ -138,3 +138,70 @@ export const ChevronRightIcon = ({ size = 18, color = 'currentColor' }: IconProp
     <Polyline points="9,18 15,12 9,6" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
   </Svg>
 );
+
+export const EyeIcon = ({ size = 22, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Circle cx={12} cy={12} r={3} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const EyeOffIcon = ({ size = 22, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={1} y1={1} x2={23} y2={23} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const CloseIcon = ({ size = 22, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Line x1={18} y1={6} x2={6} y2={18} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={6} y1={6} x2={18} y2={18} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const TrashIcon = ({ size = 20, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Polyline points="3,6 5,6 21,6" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const PlusIcon = ({ size = 20, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Line x1={12} y1={5} x2={12} y2={19} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+    <Line x1={5} y1={12} x2={19} y2={12} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);
+
+export const PauseIcon = ({ size = 24, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Rect x={6} y={4} width={4} height={16} rx={1} stroke={color} strokeWidth={strokeWidth} fill={color} />
+    <Rect x={14} y={4} width={4} height={16} rx={1} stroke={color} strokeWidth={strokeWidth} fill={color} />
+  </Svg>
+);
+
+export const PlayIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Polygon points="6,4 20,12 6,20" fill={color} stroke={color} strokeWidth={1.5} strokeLinejoin="round" />
+  </Svg>
+);
+
+export const CheckCircleIcon = ({ size = 20, color = 'currentColor' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Circle cx={12} cy={12} r={10} fill={color} stroke={color} strokeWidth={2} />
+    <Path
+      d="M8 12l3 3 5-6"
+      stroke="#FFFFFF"
+      strokeWidth={2.5}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+export const ChevronLeftIcon = ({ size = 18, color = 'currentColor' }: IconProps) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+    <Polyline points="15,18 9,12 15,6" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+  </Svg>
+);

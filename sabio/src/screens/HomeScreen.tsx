@@ -235,7 +235,9 @@ export default function HomeScreen() {
                   styles.quickCard,
                   pressed && styles.quickCardPressed,
                 ]}
-                onPress={() => {}}
+                onPress={() => {
+                  if (action.title === 'Lessons') navigation.navigate('Lessons');
+                }}
               >
                 <View style={[styles.quickIcon, { backgroundColor: action.iconBg }]}>
                   {action.icon}
@@ -286,6 +288,8 @@ export default function HomeScreen() {
         onTabPress={(tabId) => {
           if (tabId === 'chat') {
             navigation.navigate('DillowChat');
+          } else if (tabId === 'learn') {
+            navigation.navigate('Lessons');
           } else {
             setActiveNav(tabId);
           }
