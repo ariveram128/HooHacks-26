@@ -416,6 +416,7 @@ export default function DillowChatScreen() {
     setIsPaused(next);
     try {
       conversation.setMicMuted(next);
+      conversation.setVolume({ volume: next ? 0 : 1 });
     } catch {}
     if (next) {
       conversation.sendContextualUpdate(

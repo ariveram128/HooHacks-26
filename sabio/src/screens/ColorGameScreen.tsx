@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,14 @@ import {
   Dimensions,
   Modal,
   Platform as RNPlatform,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, radii } from '../theme';
-import { ChevronLeftIcon, MicIcon, PlayIcon } from '../components/Icons';
+import { ChevronLeftIcon, MicIcon } from '../components/Icons';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -406,6 +407,20 @@ export default function ColorGameScreen() {
     }, 600);
   };
 
+  const startGameRef = useRef(startGame);
+  startGameRef.current = startGame;
+
+  // Start immediately when opening from Practice / Home — no separate intro screen.
+  useFocusEffect(
+    useCallback(() => {
+      if (gameStateRef.current !== 'idle') return undefined;
+      const id = requestAnimationFrame(() => {
+        if (gameStateRef.current === 'idle') void startGameRef.current();
+      });
+      return () => cancelAnimationFrame(id);
+    }, []),
+  );
+
   const timerColor = timerBar.interpolate({
     inputRange: [0, 0.3, 0.6, 1],
     outputRange: [colors.terracotta, colors.terracotta, colors.marigold, colors.teal],
@@ -413,47 +428,17 @@ export default function ColorGameScreen() {
 
   const nextPlatform = platforms[currentLevel + 1];
 
-  // ── IDLE ──
+  // Brief load before auto-start (no separate intro / Play screen).
   if (gameState === 'idle') {
     return (
       <View style={[styles.root, { paddingTop: insets.top + 12 }]}>
-        <View style={styles.idleHeader}>
+        <View style={styles.bootHeader}>
           <Pressable onPress={() => navigation.goBack()} hitSlop={12}>
             <ChevronLeftIcon size={24} color={colors.charcoal} />
           </Pressable>
         </View>
-        <View style={styles.idleCenter}>
-          <View style={styles.idleTitleRow}>
-            <View style={charStyles.body}>
-              <View style={charStyles.eyeLeft} />
-              <View style={charStyles.eyeRight} />
-            </View>
-            <Text style={styles.idleTitle}>Plataformas</Text>
-          </View>
-          <Text style={styles.idleSub}>
-            Say the color of the next platform{'\n'}in Spanish to jump higher!
-          </Text>
-
-          <View style={styles.idleColors}>
-            {GAME_COLORS.slice(0, 8).map((c) => (
-              <View key={c.name} style={styles.idleColorChip}>
-                <View style={[styles.idleColorDot, { backgroundColor: c.hex }]} />
-                <Text style={styles.idleColorName}>{c.name}</Text>
-              </View>
-            ))}
-          </View>
-
-          {highScore > 0 && (
-            <Text style={styles.idleHigh}>Best: {highScore}</Text>
-          )}
-
-          <Pressable
-            onPress={startGame}
-            style={({ pressed }) => [styles.playBtn, pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] }]}
-          >
-            <PlayIcon size={22} color={colors.white} />
-            <Text style={styles.playBtnText}>Play</Text>
-          </Pressable>
+        <View style={styles.bootWrap}>
+          <ActivityIndicator size="large" color={colors.terracotta} />
         </View>
       </View>
     );
@@ -653,75 +638,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.cream,
   },
-
-  // ── Idle ──
-  idleHeader: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 20 },
-  idleCenter: {
+  bootHeader: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    marginBottom: 8,
+  },
+  bootWrap: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 80,
   },
-  idleTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginBottom: 10,
-  },
-  idleTitle: {
-    fontFamily: fonts.serif,
-    fontSize: 36,
-    color: colors.charcoal,
-  },
-  idleSub: {
-    fontFamily: fonts.light,
-    fontSize: 15,
-    color: colors.warmGray,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  idleColors: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-    marginBottom: 28,
-    paddingHorizontal: 30,
-  },
-  idleColorChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    backgroundColor: colors.creamLight,
-    borderWidth: 1,
-    borderColor: colors.creamDark,
-    borderRadius: radii.full,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-  },
-  idleColorDot: { width: 12, height: 12, borderRadius: 6 },
-  idleColorName: { fontFamily: fonts.medium, fontSize: 12, color: colors.charcoal },
-  idleHigh: {
-    fontFamily: fonts.semiBold,
-    fontSize: 15,
-    color: colors.marigoldDark,
-    marginBottom: 20,
-  },
-  playBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: colors.terracotta,
-    borderRadius: radii.lg,
-    paddingVertical: 16,
-    paddingHorizontal: 40,
-    ...RNPlatform.select({
-      ios: { shadowColor: colors.terracottaDark, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 12 },
-      android: { elevation: 8 },
-    }),
-  },
-  playBtnText: { fontFamily: fonts.semiBold, fontSize: 18, color: colors.white },
 
   // ── HUD ──
   hud: {
