@@ -8,6 +8,7 @@ import {
   Dimensions,
   Animated,
   Platform,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle as SvgCircle, Rect, Line } from 'react-native-svg';
@@ -16,16 +17,35 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
-import { MicIcon, GamepadIcon, ChevronRightIcon } from '../components/Icons';
+import { MicIcon, GamepadIcon, ChevronRightIcon, CloseIcon } from '../components/Icons';
 import BottomNav from '../components/BottomNav';
 import { getProgress, PracticeProgress } from '../store/practiceProgress';
 import { phrases } from '../data/phrases';
 
-const { width: SCREEN_W } = Dimensions.get('window');
+const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const CARD_W = SCREEN_W * 0.42;
 const FEATURED_H = 190;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+/* ══════════════════════════════════════ */
+/* ── Game definition type ───────────── */
+/* ══════════════════════════════════════ */
+
+type GameDef = {
+  id: string;
+  title: string;
+  subtitle: string;
+  category: string;
+  gradientColors: [string, string];
+  pattern: React.ReactNode;
+  icon: React.ReactNode;
+  iconLarge: React.ReactNode;
+  screen: keyof RootStackParamList | null;
+  comingSoon?: boolean;
+  benefits: string[];
+  stats: (p: PracticeProgress) => { label: string; value: string | number }[];
+};
 
 /* ══════════════════════════════════════ */
 /* ── Decorative SVG patterns for cards ─ */
@@ -54,6 +74,20 @@ const WavePattern = () => (
   </Svg>
 );
 
+const WavePatternLarge = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 400 800"
+    style={StyleSheet.absoluteFill}
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <Path d="M-40 200 Q100 140 200 190 T440 160" stroke="rgba(255,255,255,0.08)" strokeWidth={80} fill="none" />
+    <Path d="M-40 350 Q120 300 240 340 T480 300" stroke="rgba(255,255,255,0.05)" strokeWidth={50} fill="none" />
+    <Path d="M-40 500 Q80 460 180 490 T420 460" stroke="rgba(255,255,255,0.04)" strokeWidth={35} fill="none" />
+  </Svg>
+);
+
 const CirclesPattern = () => (
   <Svg
     width="100%"
@@ -65,6 +99,21 @@ const CirclesPattern = () => (
     <SvgCircle cx={160} cy={40} r={50} fill="rgba(255,255,255,0.08)" />
     <SvgCircle cx={170} cy={50} r={30} fill="rgba(255,255,255,0.06)" />
     <SvgCircle cx={30} cy={170} r={35} fill="rgba(255,255,255,0.05)" />
+  </Svg>
+);
+
+const CirclesPatternLarge = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 400 800"
+    style={StyleSheet.absoluteFill}
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <SvgCircle cx={320} cy={100} r={120} fill="rgba(255,255,255,0.06)" />
+    <SvgCircle cx={340} cy={130} r={70} fill="rgba(255,255,255,0.04)" />
+    <SvgCircle cx={60} cy={350} r={90} fill="rgba(255,255,255,0.04)" />
+    <SvgCircle cx={280} cy={550} r={60} fill="rgba(255,255,255,0.03)" />
   </Svg>
 );
 
@@ -86,6 +135,20 @@ const DiagonalPattern = () => (
         stroke="rgba(255,255,255,0.05)"
         strokeWidth={12}
       />
+    ))}
+  </Svg>
+);
+
+const DiagonalPatternLarge = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 400 800"
+    style={StyleSheet.absoluteFill}
+    preserveAspectRatio="xMidYMid slice"
+  >
+    {[0, 50, 100, 150, 200, 250, 300, 350, 400].map((x) => (
+      <Line key={x} x1={x} y1={0} x2={x - 120} y2={800} stroke="rgba(255,255,255,0.04)" strokeWidth={20} />
     ))}
   </Svg>
 );
@@ -112,6 +175,22 @@ const DotsPattern = () => (
   </Svg>
 );
 
+const DotsPatternLarge = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 400 800"
+    style={StyleSheet.absoluteFill}
+    preserveAspectRatio="xMidYMid slice"
+  >
+    {[40, 100, 160, 220, 280, 340].map((x) =>
+      [40, 120, 200, 280, 360, 440, 520, 600].map((y) => (
+        <SvgCircle key={`${x}-${y}`} cx={x} cy={y} r={4} fill="rgba(255,255,255,0.06)" />
+      )),
+    )}
+  </Svg>
+);
+
 const GridPattern = () => (
   <Svg
     width="100%"
@@ -123,6 +202,21 @@ const GridPattern = () => (
     <Rect x={120} y={20} width={55} height={55} rx={12} fill="rgba(255,255,255,0.07)" />
     <Rect x={135} y={35} width={55} height={55} rx={12} fill="rgba(255,255,255,0.05)" />
     <Rect x={20} y={130} width={40} height={40} rx={8} fill="rgba(255,255,255,0.06)" />
+  </Svg>
+);
+
+const GridPatternLarge = () => (
+  <Svg
+    width="100%"
+    height="100%"
+    viewBox="0 0 400 800"
+    style={StyleSheet.absoluteFill}
+    preserveAspectRatio="xMidYMid slice"
+  >
+    <Rect x={240} y={80} width={110} height={110} rx={24} fill="rgba(255,255,255,0.05)" />
+    <Rect x={270} y={110} width={110} height={110} rx={24} fill="rgba(255,255,255,0.04)" />
+    <Rect x={40} y={350} width={80} height={80} rx={16} fill="rgba(255,255,255,0.04)" />
+    <Rect x={280} y={500} width={60} height={60} rx={12} fill="rgba(255,255,255,0.03)" />
   </Svg>
 );
 
@@ -155,10 +249,11 @@ function StaggerIn({ children, delay = 0, style }: { children: React.ReactNode; 
 /* ── Category tag component ─────────── */
 /* ══════════════════════════════════════ */
 
-function CategoryTag({ label, color: tagColor }: { label: string; color: string }) {
+function CategoryTag({ label, color: tagColor, size = 'sm' }: { label: string; color: string; size?: 'sm' | 'lg' }) {
+  const isLg = size === 'lg';
   return (
-    <View style={[tagStyles.pill, { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
-      <Text style={[tagStyles.text, { color: tagColor }]}>{label}</Text>
+    <View style={[tagStyles.pill, { backgroundColor: 'rgba(255,255,255,0.2)' }, isLg && tagStyles.pillLg]}>
+      <Text style={[tagStyles.text, { color: tagColor }, isLg && tagStyles.textLg]}>{label}</Text>
     </View>
   );
 }
@@ -170,41 +265,21 @@ const tagStyles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
+  pillLg: {
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
   text: {
     fontFamily: fonts.semiBold,
     fontSize: 10,
     letterSpacing: 1.2,
     textTransform: 'uppercase',
   },
-});
-
-/* ══════════════════════════════════════ */
-/* ── Stat pill ──────────────────────── */
-/* ══════════════════════════════════════ */
-
-function StatPill({ icon, value, label, accentColor }: { icon: string; value: string | number; label: string; accentColor: string }) {
-  return (
-    <View style={statStyles.pill}>
-      <Text style={statStyles.icon}>{icon}</Text>
-      <Text style={[statStyles.value, { color: accentColor }]}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
-    </View>
-  );
-}
-
-const statStyles = StyleSheet.create({
-  pill: {
-    flex: 1,
-    alignItems: 'center',
-    paddingVertical: 14,
-    backgroundColor: colors.creamLight,
-    borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.creamDark,
+  textLg: {
+    fontSize: 12,
+    letterSpacing: 1.5,
   },
-  icon: { fontSize: 20, marginBottom: 4 },
-  value: { fontFamily: fonts.bold, fontSize: 22, marginBottom: 1 },
-  label: { fontFamily: fonts.light, fontSize: 11, color: colors.warmGray, letterSpacing: 0.3 },
 });
 
 /* ══════════════════════════════════════ */
@@ -235,7 +310,7 @@ function GameCard({ title, subtitle, category, gradientColors, pattern, icon, on
   return (
     <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
       <Pressable
-        onPress={comingSoon ? undefined : onPress}
+        onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         style={cardStyles.wrapper}
@@ -514,6 +589,295 @@ const BookOpenIcon = ({ size = 24, color = '#fff' }: { size?: number; color?: st
 );
 
 /* ══════════════════════════════════════ */
+/* ── Game Detail Modal ──────────────── */
+/* ══════════════════════════════════════ */
+
+function GameDetailModal({
+  game,
+  progress,
+  visible,
+  onClose,
+  onPlay,
+}: {
+  game: GameDef | null;
+  progress: PracticeProgress;
+  visible: boolean;
+  onClose: () => void;
+  onPlay: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      scaleAnim.setValue(0.92);
+      opacityAnim.setValue(0);
+      Animated.parallel([
+        Animated.spring(scaleAnim, { toValue: 1, damping: 16, stiffness: 120, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 300, useNativeDriver: true }),
+      ]).start();
+    }
+  }, [visible]);
+
+  if (!game) return null;
+
+  const gameStats = game.stats(progress);
+
+  return (
+    <Modal visible={visible} transparent animationType="none" statusBarTranslucent>
+      <Animated.View style={[modalStyles.backdrop, { opacity: opacityAnim }]}>
+        <Animated.View style={[modalStyles.container, { transform: [{ scale: scaleAnim }] }]}>
+          <LinearGradient
+            colors={game.gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0.5, y: 1 }}
+            style={modalStyles.gradient}
+          >
+            {/* Large background pattern */}
+            {game.id === 'frases' && <WavePatternLarge />}
+            {game.id === 'plataformas' && <CirclesPatternLarge />}
+            {game.id === 'palabra-rapida' && <DiagonalPatternLarge />}
+            {game.id === 'pares' && <DotsPatternLarge />}
+            {game.id === 'dictado' && <GridPatternLarge />}
+            {game.id === 'escritura' && <DiagonalPatternLarge />}
+
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={[modalStyles.scrollContent, { paddingTop: insets.top + 12, paddingBottom: insets.bottom + 100 }]}
+              showsVerticalScrollIndicator={false}
+            >
+              {/* Close button */}
+              <Pressable onPress={onClose} hitSlop={16} style={modalStyles.closeBtn}>
+                <CloseIcon size={22} color="rgba(255,255,255,0.7)" />
+              </Pressable>
+
+              {/* Icon */}
+              <View style={modalStyles.iconContainer}>
+                <View style={modalStyles.iconHex}>
+                  {game.iconLarge}
+                </View>
+              </View>
+
+              {/* Title & category */}
+              <Text style={modalStyles.title}>{game.title}</Text>
+              <View style={{ alignItems: 'center', marginBottom: 32 }}>
+                <CategoryTag label={game.category} color="rgba(255,255,255,0.7)" size="lg" />
+              </View>
+
+              {/* Stats */}
+              {gameStats.length > 0 && (
+                <View style={modalStyles.statsCard}>
+                  {gameStats.map((stat, i) => (
+                    <React.Fragment key={stat.label}>
+                      {i > 0 && <View style={modalStyles.statsDividerV} />}
+                      <View style={modalStyles.statItem}>
+                        <Text style={modalStyles.statValue}>{stat.value}</Text>
+                        <Text style={modalStyles.statLabel}>{stat.label}</Text>
+                      </View>
+                    </React.Fragment>
+                  ))}
+                </View>
+              )}
+
+              {/* Benefits */}
+              <View style={modalStyles.benefitsSection}>
+                <Text style={modalStyles.benefitsTitle}>BENEFITS</Text>
+                {game.benefits.map((benefit, i) => (
+                  <View key={i} style={modalStyles.benefitRow}>
+                    <View style={modalStyles.benefitDot} />
+                    <Text style={modalStyles.benefitText}>{benefit}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Description */}
+              <Text style={modalStyles.description}>{game.subtitle}</Text>
+            </ScrollView>
+
+            {/* Play button - pinned at bottom */}
+            <View style={[modalStyles.playBtnContainer, { paddingBottom: insets.bottom + 16 }]}>
+              {game.comingSoon ? (
+                <View style={[modalStyles.playBtn, modalStyles.playBtnDisabled]}>
+                  <Text style={modalStyles.playBtnText}>Coming Soon</Text>
+                </View>
+              ) : (
+                <Pressable
+                  onPress={onPlay}
+                  style={({ pressed }) => [modalStyles.playBtn, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+                >
+                  <Text style={modalStyles.playBtnText}>Play</Text>
+                </Pressable>
+              )}
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      </Animated.View>
+    </Modal>
+  );
+}
+
+const modalStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  container: {
+    flex: 1,
+  },
+  gradient: {
+    flex: 1,
+  },
+  scrollContent: {
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+
+  /* Close */
+  closeBtn: {
+    alignSelf: 'flex-start',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 28,
+  },
+
+  /* Icon */
+  iconContainer: {
+    marginBottom: 20,
+  },
+  iconHex: {
+    width: 90,
+    height: 90,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 12 },
+      android: { elevation: 8 },
+    }),
+  },
+
+  /* Title */
+  title: {
+    fontFamily: fonts.bold,
+    fontSize: 30,
+    color: colors.white,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+
+  /* Stats */
+  statsCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    paddingVertical: 20,
+    marginBottom: 32,
+    alignSelf: 'stretch',
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: fonts.bold,
+    fontSize: 28,
+    color: colors.white,
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontFamily: fonts.medium,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  statsDividerV: {
+    width: 1,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginVertical: 4,
+  },
+
+  /* Benefits */
+  benefitsSection: {
+    alignSelf: 'stretch',
+    marginBottom: 24,
+  },
+  benefitsTitle: {
+    fontFamily: fonts.semiBold,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.45)',
+    letterSpacing: 1.5,
+    marginBottom: 16,
+  },
+  benefitRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 14,
+    paddingRight: 12,
+  },
+  benefitDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.3)',
+    marginTop: 6,
+    marginRight: 14,
+  },
+  benefitText: {
+    fontFamily: fonts.regular,
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.8)',
+    lineHeight: 21,
+    flex: 1,
+  },
+
+  /* Description */
+  description: {
+    fontFamily: fonts.light,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.4)',
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+
+  /* Play button */
+  playBtnContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    backgroundColor: 'transparent',
+  },
+  playBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: radii.lg,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  playBtnDisabled: {
+    opacity: 0.5,
+  },
+  playBtnText: {
+    fontFamily: fonts.bold,
+    fontSize: 18,
+    color: colors.white,
+    letterSpacing: 0.5,
+  },
+});
+
+/* ══════════════════════════════════════ */
 /* ── MAIN SCREEN ────────────────────── */
 /* ══════════════════════════════════════ */
 
@@ -526,6 +890,7 @@ export default function PracticeScreen() {
     bestStreak: 0,
     colorGameHighScore: 0,
   });
+  const [selectedGame, setSelectedGame] = useState<GameDef | null>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -535,7 +900,132 @@ export default function PracticeScreen() {
 
   const masteredCount = progress.masteredPhrases.length;
   const totalPhrases = phrases.length;
-  const masteredPct = totalPhrases > 0 ? Math.round((masteredCount / totalPhrases) * 100) : 0;
+
+  /* ── Game definitions ── */
+  const games: Record<string, GameDef> = {
+    frases: {
+      id: 'frases',
+      title: 'Frases',
+      subtitle: 'Practice saying key phrases aloud and get instant pronunciation feedback from Sabio.',
+      category: 'Pronunciation',
+      gradientColors: [colors.teal, colors.tealDark],
+      pattern: <WavePattern />,
+      icon: <MicIcon size={22} color={colors.white} />,
+      iconLarge: <MicIcon size={40} color={colors.white} />,
+      screen: 'PhrasePractice',
+      benefits: [
+        'Build confidence speaking Spanish out loud',
+        'Improve pronunciation with real-time feedback',
+        'Master essential phrases for daily conversation',
+      ],
+      stats: (p) => [
+        { label: 'Mastered', value: `${p.masteredPhrases.length}/${totalPhrases}` },
+        { label: 'Best Streak', value: p.bestStreak },
+      ],
+    },
+    plataformas: {
+      id: 'plataformas',
+      title: 'Plataformas',
+      subtitle: 'Say color names in Spanish to keep your character jumping from platform to platform!',
+      category: 'Colors',
+      gradientColors: [colors.terracotta, colors.terracottaDark],
+      pattern: <CirclesPattern />,
+      icon: <GamepadIcon size={22} color={colors.white} />,
+      iconLarge: <GamepadIcon size={40} color={colors.white} />,
+      screen: 'ColorGame',
+      benefits: [
+        'Learn Spanish color vocabulary through play',
+        'Train quick recall under time pressure',
+        'Improve Spanish pronunciation speed',
+      ],
+      stats: (p) => [
+        { label: 'High Score', value: p.colorGameHighScore },
+        { label: 'Difficulty', value: 'Adaptive' },
+      ],
+    },
+    'palabra-rapida': {
+      id: 'palabra-rapida',
+      title: 'Palabra Rapida',
+      subtitle: 'Translate words as fast as you can before the timer runs out.',
+      category: 'Speed',
+      gradientColors: ['#6C5CE7', '#4834D4'],
+      pattern: <DiagonalPattern />,
+      icon: <BrainIcon size={22} color={colors.white} />,
+      iconLarge: <BrainIcon size={40} color={colors.white} />,
+      screen: null,
+      comingSoon: true,
+      benefits: [
+        'Expand your working vocabulary rapidly',
+        'Develop faster translation instincts',
+        'Challenge yourself with progressive difficulty',
+      ],
+      stats: () => [],
+    },
+    pares: {
+      id: 'pares',
+      title: 'Pares',
+      subtitle: 'Find matching Spanish-English word pairs in a memory card game.',
+      category: 'Memory',
+      gradientColors: [colors.marigold, colors.marigoldDark],
+      pattern: <DotsPattern />,
+      icon: <BookOpenIcon size={22} color={colors.white} />,
+      iconLarge: <BookOpenIcon size={40} color={colors.white} />,
+      screen: null,
+      comingSoon: true,
+      benefits: [
+        'Strengthen word association and recall',
+        'Learn vocabulary through visual memory',
+        'Build connections between Spanish and English',
+      ],
+      stats: () => [],
+    },
+    dictado: {
+      id: 'dictado',
+      title: 'Dictado',
+      subtitle: 'Listen carefully to spoken Spanish and type exactly what you hear.',
+      category: 'Listening',
+      gradientColors: ['#2D3436', '#636E72'],
+      pattern: <GridPattern />,
+      icon: <ListenIcon size={22} color={colors.white} />,
+      iconLarge: <ListenIcon size={40} color={colors.white} />,
+      screen: null,
+      comingSoon: true,
+      benefits: [
+        'Sharpen your ear for natural Spanish speech',
+        'Improve spelling and written accuracy',
+        'Train comprehension at native speed',
+      ],
+      stats: () => [],
+    },
+    escritura: {
+      id: 'escritura',
+      title: 'Escritura',
+      subtitle: 'Write out translations from audio prompts to practice written Spanish.',
+      category: 'Writing',
+      gradientColors: ['#E17055', '#D63031'],
+      pattern: <DiagonalPattern />,
+      icon: <PencilIcon size={22} color={colors.white} />,
+      iconLarge: <PencilIcon size={40} color={colors.white} />,
+      screen: null,
+      comingSoon: true,
+      benefits: [
+        'Practice forming sentences in Spanish',
+        'Reinforce grammar through active writing',
+        'Bridge the gap between hearing and writing',
+      ],
+      stats: () => [],
+    },
+  };
+
+  const handleOpenGame = (gameId: string) => {
+    setSelectedGame(games[gameId] ?? null);
+  };
+
+  const handlePlay = () => {
+    if (!selectedGame?.screen) return;
+    setSelectedGame(null);
+    navigation.navigate(selectedGame.screen as any);
+  };
 
   return (
     <View style={styles.root}>
@@ -546,23 +1036,14 @@ export default function PracticeScreen() {
       >
         {/* ── Header ── */}
         <StaggerIn delay={0} style={{ paddingHorizontal: 20 }}>
-          <Text style={styles.screenTitle}>Práctica</Text>
+          <Text style={styles.screenTitle}>Practica</Text>
           <Text style={styles.screenSubtitle}>
             Train your ear, voice, and vocabulary
           </Text>
         </StaggerIn>
 
-        {/* ── Stats row ── */}
-        <StaggerIn delay={80} style={{ paddingHorizontal: 20, marginBottom: 28 }}>
-          <View style={styles.statsRow}>
-            <StatPill icon="🎯" value={masteredPct + '%'} label="Mastered" accentColor={colors.teal} />
-            <StatPill icon="🔥" value={progress.bestStreak} label="Best streak" accentColor={colors.terracotta} />
-            <StatPill icon="🏆" value={progress.colorGameHighScore} label="High score" accentColor={colors.marigold} />
-          </View>
-        </StaggerIn>
-
         {/* ── Featured: Activity of the day ── */}
-        <StaggerIn delay={160}>
+        <StaggerIn delay={100}>
           <SectionHeader title="Pick up where you left off" />
           <FeaturedCard
             title="Frases"
@@ -572,12 +1053,12 @@ export default function PracticeScreen() {
             pattern={<WavePattern />}
             icon={<MicIcon size={28} color={colors.white} />}
             meta={`${masteredCount}/${totalPhrases}`}
-            onPress={() => navigation.navigate('PhrasePractice')}
+            onPress={() => handleOpenGame('frases')}
           />
         </StaggerIn>
 
         {/* ── Vocabulary Games ── */}
-        <StaggerIn delay={280} style={{ marginTop: 30 }}>
+        <StaggerIn delay={220} style={{ marginTop: 30 }}>
           <SectionHeader title="Vocabulary Games" />
           <ScrollView
             horizontal
@@ -591,16 +1072,16 @@ export default function PracticeScreen() {
               gradientColors={[colors.terracotta, colors.terracottaDark]}
               pattern={<CirclesPattern />}
               icon={<GamepadIcon size={22} color={colors.white} />}
-              onPress={() => navigation.navigate('ColorGame')}
+              onPress={() => handleOpenGame('plataformas')}
             />
             <GameCard
-              title="Palabra Rápida"
+              title="Palabra Rapida"
               subtitle="Translate words against the clock"
               category="Speed"
               gradientColors={['#6C5CE7', '#4834D4']}
               pattern={<DiagonalPattern />}
               icon={<BrainIcon size={22} color={colors.white} />}
-              onPress={() => {}}
+              onPress={() => handleOpenGame('palabra-rapida')}
               comingSoon
             />
             <GameCard
@@ -610,14 +1091,14 @@ export default function PracticeScreen() {
               gradientColors={[colors.marigold, colors.marigoldDark]}
               pattern={<DotsPattern />}
               icon={<BookOpenIcon size={22} color={colors.white} />}
-              onPress={() => {}}
+              onPress={() => handleOpenGame('pares')}
               comingSoon
             />
           </ScrollView>
         </StaggerIn>
 
         {/* ── Listening & Speaking ── */}
-        <StaggerIn delay={400} style={{ marginTop: 30 }}>
+        <StaggerIn delay={340} style={{ marginTop: 30 }}>
           <SectionHeader title="Listening & Speaking" />
           <ScrollView
             horizontal
@@ -631,7 +1112,7 @@ export default function PracticeScreen() {
               gradientColors={[colors.teal, '#1A8B7A']}
               pattern={<WavePattern />}
               icon={<MicIcon size={22} color={colors.white} />}
-              onPress={() => navigation.navigate('PhrasePractice')}
+              onPress={() => handleOpenGame('frases')}
             />
             <GameCard
               title="Dictado"
@@ -640,7 +1121,7 @@ export default function PracticeScreen() {
               gradientColors={['#2D3436', '#636E72']}
               pattern={<GridPattern />}
               icon={<ListenIcon size={22} color={colors.white} />}
-              onPress={() => {}}
+              onPress={() => handleOpenGame('dictado')}
               comingSoon
             />
             <GameCard
@@ -650,14 +1131,14 @@ export default function PracticeScreen() {
               gradientColors={['#E17055', '#D63031']}
               pattern={<DiagonalPattern />}
               icon={<PencilIcon size={22} color={colors.white} />}
-              onPress={() => {}}
+              onPress={() => handleOpenGame('escritura')}
               comingSoon
             />
           </ScrollView>
         </StaggerIn>
 
         {/* ── Talk to Dillow CTA ── */}
-        <StaggerIn delay={520} style={{ marginTop: 30, paddingHorizontal: 20 }}>
+        <StaggerIn delay={460} style={{ marginTop: 30, paddingHorizontal: 20 }}>
           <Pressable
             onPress={() => navigation.navigate('DillowChat')}
             style={({ pressed }) => [styles.dillowCta, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
@@ -681,6 +1162,15 @@ export default function PracticeScreen() {
           </Pressable>
         </StaggerIn>
       </ScrollView>
+
+      {/* ── Game detail modal ── */}
+      <GameDetailModal
+        game={selectedGame}
+        progress={progress}
+        visible={selectedGame !== null}
+        onClose={() => setSelectedGame(null)}
+        onPlay={handlePlay}
+      />
 
       <BottomNav
         activeTab="practice"
@@ -718,12 +1208,6 @@ const styles = StyleSheet.create({
     color: colors.warmGray,
     marginBottom: 24,
     letterSpacing: 0.3,
-  },
-
-  /* Stats */
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
   },
 
   /* Dillow CTA */
