@@ -11,10 +11,12 @@ import {
   Platform,
   TextInput,
   Keyboard,
+  Dimensions,
+  Easing,
 } from 'react-native';
 import { useConversation } from '@elevenlabs/react-native';
 import type { ConversationStatus, Role } from '@elevenlabs/react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle as SvgCircle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,19 +32,228 @@ import {
   EyeOffIcon,
   NotesIcon,
   PlayIcon,
+  CloseIcon,
 } from '../components/Icons';
-import { colors, fonts } from '../theme';
+import { colors, fonts, radii } from '../theme';
 
 const AGENT_ID = process.env.EXPO_PUBLIC_AGENT_ID ?? '';
+const { width: SCREEN_W } = Dimensions.get('window');
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+/* ══════════════════════════════════════ */
+/* ── Animated Wave Ring ─────────────── */
+/* ══════════════════════════════════════ */
+
+interface WaveRingProps {
+  baseSize: number;
+  color: string;
+  delay: number;
+  isActive: boolean;
+  intensity: 'idle' | 'listening' | 'speaking' | 'paused';
+}
+
+function WaveRing({ baseSize, color, delay, isActive, intensity }: WaveRingProps) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const animRef = useRef<Animated.CompositeAnimation | null>(null);
+
+  useEffect(() => {
+    animRef.current?.stop();
+
+    if (!isActive) {
+      Animated.parallel([
+        Animated.timing(scale, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0, duration: 400, useNativeDriver: true }),
+      ]).start();
+      return;
+    }
+
+    const maxScale = intensity === 'speaking' ? 1.45 : intensity === 'listening' ? 1.25 : intensity === 'paused' ? 1.08 : 1.15;
+    const minScale = intensity === 'speaking' ? 1.1 : intensity === 'listening' ? 1.02 : intensity === 'paused' ? 1.02 : 1.0;
+    const dur = intensity === 'speaking' ? 800 : intensity === 'listening' ? 1200 : intensity === 'paused' ? 3000 : 2000;
+    const maxOp = intensity === 'speaking' ? 0.5 : intensity === 'listening' ? 0.35 : intensity === 'paused' ? 0.12 : 0.2;
+
+    const t = setTimeout(() => {
+      Animated.timing(opacity, { toValue: maxOp, duration: 400, useNativeDriver: true }).start();
+      animRef.current = Animated.loop(
+        Animated.sequence([
+          Animated.timing(scale, { toValue: maxScale, duration: dur, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(scale, { toValue: minScale, duration: dur, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ]),
+      );
+      animRef.current.start();
+    }, delay);
+
+    return () => { clearTimeout(t); animRef.current?.stop(); };
+  }, [isActive, intensity]);
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        width: baseSize,
+        height: baseSize,
+        borderRadius: baseSize / 2,
+        borderWidth: intensity === 'speaking' ? 3 : 2,
+        borderColor: color,
+        opacity,
+        transform: [{ scale }],
+      }}
+    />
+  );
+}
+
+/* ══════════════════════════════════════ */
+/* ── Orb Visualizer ─────────────────── */
+/* ══════════════════════════════════════ */
+
+interface OrbProps {
+  status: ConversationStatus;
+  mode: 'speaking' | 'listening';
+  isPaused: boolean;
+  isStarting: boolean;
+  onPress: () => void;
+  compact?: boolean;
+}
+
+function DillowOrb({ status, mode, isPaused, isStarting, onPress, compact }: OrbProps) {
+  const isConnected = status === 'connected';
+  const isConnecting = status === 'connecting';
+  const breathe = useRef(new Animated.Value(1)).current;
+
+  const intensity: WaveRingProps['intensity'] = !isConnected
+    ? 'idle'
+    : isPaused
+    ? 'paused'
+    : mode === 'speaking'
+    ? 'speaking'
+    : 'listening';
+
+  const orbSize = compact ? 100 : 140;
+  const ringColors = [
+    colors.teal + '60',
+    colors.tealLight + '45',
+    colors.marigold + '35',
+    colors.terracottaLight + '25',
+  ];
+
+  // Gentle idle breathe for the orb itself
+  useEffect(() => {
+    const anim = Animated.loop(
+      Animated.sequence([
+        Animated.timing(breathe, { toValue: 1.04, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(breathe, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      ]),
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+
+  const orbBg = isConnected
+    ? isPaused
+      ? colors.warmGray
+      : mode === 'speaking'
+      ? colors.marigold
+      : colors.teal
+    : isConnecting
+    ? colors.warmGray
+    : colors.tealDark;
+
+  return (
+    <View style={[orbStyles.container, compact && { paddingVertical: 16 }]}>
+      {/* Wave rings */}
+      {ringColors.map((c, i) => (
+        <WaveRing
+          key={i}
+          baseSize={orbSize + 30 + i * 28}
+          color={c}
+          delay={i * 120}
+          isActive={isConnected}
+          intensity={intensity}
+        />
+      ))}
+
+      {/* Outer glow */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          orbStyles.glow,
+          {
+            width: orbSize + 40,
+            height: orbSize + 40,
+            borderRadius: (orbSize + 40) / 2,
+            backgroundColor: orbBg,
+            transform: [{ scale: breathe }],
+          },
+        ]}
+      />
+
+      {/* Main orb */}
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={onPress}
+        disabled={isStarting || isConnecting}
+      >
+        <Animated.View
+          style={[
+            orbStyles.orb,
+            {
+              width: orbSize,
+              height: orbSize,
+              borderRadius: orbSize / 2,
+              backgroundColor: orbBg,
+              transform: [{ scale: breathe }],
+            },
+            Platform.select({
+              ios: { shadowColor: orbBg, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 20 },
+              android: { elevation: 12 },
+            }),
+          ]}
+        >
+          {isStarting || isConnecting ? (
+            <Text style={orbStyles.dots}>...</Text>
+          ) : isConnected && isPaused ? (
+            <PlayIcon size={compact ? 26 : 32} color={colors.cream} />
+          ) : (
+            <MicIcon size={compact ? 28 : 36} color={colors.white} />
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const orbStyles = StyleSheet.create({
+  container: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 32,
+  },
+  glow: {
+    position: 'absolute',
+    opacity: 0.12,
+  },
+  orb: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dots: {
+    color: colors.cream,
+    fontSize: 28,
+    fontFamily: fonts.bold,
+  },
+});
+
+/* ══════════════════════════════════════ */
+/* ── MAIN SCREEN ────────────────────── */
+/* ══════════════════════════════════════ */
 
 export default function DillowChatScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
   const flatListRef = useRef<FlatList<ChatMessage>>(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const ringAnim = useRef(new Animated.Value(0)).current;
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [textInput, setTextInput] = useState('');
@@ -64,7 +275,7 @@ export default function DillowChatScreen() {
       };
       setMessages((prev) => [...prev, msg]);
     },
-    []
+    [],
   );
 
   const conversation = useConversation({
@@ -94,63 +305,16 @@ export default function DillowChatScreen() {
       console.log('Status:', status),
   });
 
-  // ── Animations ──
-
-  useEffect(() => {
-    if (conversation.status === 'connected' && mode === 'listening') {
-      const p = Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.12,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 1000,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      p.start();
-      return () => p.stop();
-    }
-    pulseAnim.setValue(1);
-  }, [conversation.status, mode]);
-
-  useEffect(() => {
-    if (conversation.status === 'connected' && mode === 'speaking') {
-      const r = Animated.loop(
-        Animated.sequence([
-          Animated.timing(ringAnim, {
-            toValue: 1,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(ringAnim, {
-            toValue: 0,
-            duration: 0,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-      r.start();
-      return () => r.stop();
-    }
-    ringAnim.setValue(0);
-  }, [conversation.status, mode]);
-
   useEffect(() => {
     if (messages.length > 0 && showTranscript) {
       setTimeout(
         () => flatListRef.current?.scrollToEnd({ animated: true }),
-        100
+        100,
       );
     }
   }, [messages.length, showTranscript]);
 
-  // ── Cleanup on unmount / navigate away ──
-
+  // ── Cleanup on unmount ──
   const conversationRef = useRef(conversation);
   conversationRef.current = conversation;
 
@@ -207,11 +371,11 @@ export default function DillowChatScreen() {
     } catch {}
     if (next) {
       conversation.sendContextualUpdate(
-        'The user has paused the conversation. Stay completely silent. Do not respond to any audio until the user resumes.'
+        'The user has paused the conversation. Stay completely silent. Do not respond to any audio until the user resumes.',
       );
     } else {
       conversation.sendContextualUpdate(
-        'The user has resumed the conversation. You may respond normally again.'
+        'The user has resumed the conversation. You may respond normally again.',
       );
     }
   }, [conversation]);
@@ -224,19 +388,16 @@ export default function DillowChatScreen() {
     Keyboard.dismiss();
   };
 
+  const handleOrbPress = () => {
+    const s = conversation.status;
+    if (s === 'disconnected') startConversation();
+    else if (s === 'connected') togglePause();
+  };
+
   // ── Derived ──
 
   const isConnected = conversation.status === 'connected';
   const isDisconnected = conversation.status === 'disconnected';
-
-  const ringScale = ringAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [1, 1.8],
-  });
-  const ringOpacity = ringAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.4, 0],
-  });
 
   const statusColor = isConnected
     ? isPaused
@@ -254,108 +415,114 @@ export default function DillowChatScreen() {
       : 'Listening...'
     : conversation.status === 'connecting'
     ? 'Connecting...'
-    : 'Tap the mic to start';
+    : '';
+
+  const hasMessages = messages.length > 0;
 
   // ── Render ──
 
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* ─── Header ─── */}
-      <LinearGradient
-        colors={[colors.tealDark, colors.teal]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.header}
-      >
-        <Pressable
-          onPress={handleGoBack}
-          style={styles.headerBtn}
-        >
-          <View style={{ transform: [{ rotate: '180deg' }] }}>
-            <ChevronRightIcon size={22} color={colors.cream} />
-          </View>
+      <View style={styles.header}>
+        <Pressable onPress={handleGoBack} hitSlop={12} style={styles.headerBtn}>
+          <CloseIcon size={20} color={colors.charcoal} />
         </Pressable>
 
         <View style={styles.headerCenter}>
-          <DillowAvatar size={40} />
-          <View>
-            <Text style={styles.headerTitle}>Dillow</Text>
+          <Text style={styles.headerTitle}>Dillow</Text>
+          {statusLabel ? (
             <View style={styles.statusRow}>
-              <View
-                style={[styles.statusDot, { backgroundColor: statusColor }]}
-              />
+              <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
               <Text style={styles.statusText}>{statusLabel}</Text>
             </View>
-          </View>
+          ) : null}
         </View>
 
-        <Pressable
-          onPress={() => setShowTranscript((v) => !v)}
-          style={styles.headerBtn}
-        >
-          {showTranscript ? (
-            <EyeIcon size={20} color={colors.cream} />
-          ) : (
-            <EyeOffIcon size={20} color={colors.cream} />
+        <View style={styles.headerActions}>
+          {isConnected && (
+            <Pressable onPress={() => setShowTranscript((v) => !v)} style={styles.headerBtn}>
+              {showTranscript ? (
+                <EyeIcon size={18} color={colors.charcoal} />
+              ) : (
+                <EyeOffIcon size={18} color={colors.charcoal} />
+              )}
+            </Pressable>
           )}
-        </Pressable>
-
-        <Pressable
-          onPress={() => navigation.navigate('Notes')}
-          style={styles.headerBtn}
-        >
-          <NotesIcon size={20} color={colors.cream} />
-        </Pressable>
-
-        {isConnected && (
-          <Pressable onPress={endConversation} style={styles.endBtn}>
-            <Text style={styles.endBtnText}>End</Text>
+          <Pressable onPress={() => navigation.navigate('Notes')} style={styles.headerBtn}>
+            <NotesIcon size={18} color={colors.charcoal} />
           </Pressable>
-        )}
-      </LinearGradient>
+          {isConnected && (
+            <Pressable onPress={endConversation} style={styles.endBtn}>
+              <Text style={styles.endBtnText}>End</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
 
-      {/* ─── Chat Area ─── */}
+      {/* ─── Main Content ─── */}
       <KeyboardAvoidingView
-        style={styles.chatArea}
+        style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
-        {showTranscript ? (
-          <FlatList
-            ref={flatListRef}
-            data={messages}
-            renderItem={({ item }) => (
-              <TranscriptBubble
-                message={item}
-                isActive={activeMessageId === item.id}
-                onActivate={() => setActiveMessageId(item.id)}
-              />
-            )}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.messageList}
-            showsVerticalScrollIndicator={false}
-            onScrollBeginDrag={() => setActiveMessageId(null)}
-            ListEmptyComponent={
-              <View style={styles.emptyState}>
-                <View style={styles.emptyAvatarWrap}>
-                  <DillowAvatar size={80} />
-                </View>
-                <Text style={styles.emptyTitle}>Habla con Dillow</Text>
-                <Text style={styles.emptySubtitle}>
-                  Tap the microphone below to start a voice conversation.
-                  Dillow speaks Spanish and English — just talk naturally.
+        {/* Orb + transcript layout */}
+        {!hasMessages || !showTranscript ? (
+          /* ── Full orb view (pre-conversation or transcript hidden) ── */
+          <View style={styles.orbFullView}>
+            <DillowOrb
+              status={conversation.status}
+              mode={mode}
+              isPaused={isPaused}
+              isStarting={isStarting}
+              onPress={handleOrbPress}
+            />
+
+            {!isConnected && !isStarting && (
+              <View style={styles.idleText}>
+                <Text style={styles.idleTitle}>Habla con Dillow</Text>
+                <Text style={styles.idleSub}>
+                  Tap the mic to start a voice conversation.{'\n'}
+                  Spanish or English — just talk naturally.
                 </Text>
               </View>
-            }
-          />
+            )}
+
+            {isConnected && (
+              <Text style={styles.orbHint}>
+                {isPaused ? 'Paused — tap to resume' : 'Tap to pause'}
+              </Text>
+            )}
+          </View>
         ) : (
-          <View style={styles.hiddenView}>
-            <DillowAvatar size={64} />
-            <Text style={styles.hiddenTitle}>
-              {isConnected ? 'Conversation active' : 'Transcript hidden'}
-            </Text>
-            <Text style={styles.hiddenHint}>
-              Tap the eye icon to show the transcript
-            </Text>
+          /* ── Compact orb + transcript ── */
+          <View style={{ flex: 1 }}>
+            {/* Compact orb at top */}
+            <DillowOrb
+              status={conversation.status}
+              mode={mode}
+              isPaused={isPaused}
+              isStarting={isStarting}
+              onPress={handleOrbPress}
+              compact
+            />
+
+            {/* Transcript */}
+            <FlatList
+              ref={flatListRef}
+              data={messages}
+              renderItem={({ item }) => (
+                <TranscriptBubble
+                  message={item}
+                  isActive={activeMessageId === item.id}
+                  onActivate={() => setActiveMessageId(item.id)}
+                />
+              )}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.messageList}
+              showsVerticalScrollIndicator={false}
+              onScrollBeginDrag={() => setActiveMessageId(null)}
+              style={{ flex: 1 }}
+            />
           </View>
         )}
 
@@ -380,76 +547,38 @@ export default function DillowChatScreen() {
             />
             <Pressable
               onPress={handleSendText}
-              style={[
-                styles.sendBtn,
-                !textInput.trim() && styles.sendBtnDisabled,
-              ]}
+              style={[styles.sendBtn, !textInput.trim() && styles.sendBtnDisabled]}
               disabled={!textInput.trim()}
             >
-              <ChevronRightIcon size={18} color={colors.white} />
+              <ChevronRightIcon size={16} color={colors.white} />
             </Pressable>
           </View>
         )}
       </KeyboardAvoidingView>
 
-      {/* ─── Mic Button ─── */}
-      <View style={[styles.micArea, { paddingBottom: insets.bottom + 16 }]}>
-        {isConnected && mode === 'speaking' && !isPaused && (
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              styles.micRing,
-              {
-                transform: [{ scale: ringScale }],
-                opacity: ringOpacity,
-              },
-            ]}
-          />
-        )}
-
-        <TouchableOpacity
-          activeOpacity={0.7}
-          onPress={() => {
-            const s = conversation.status;
-            if (s === 'disconnected') {
-              startConversation();
-            } else if (s === 'connected') {
-              togglePause();
-            }
-          }}
-          disabled={isStarting || conversation.status === 'connecting'}
-          style={[
-            styles.micButton,
-            isConnected && !isPaused && styles.micActive,
-            isConnected && mode === 'speaking' && !isPaused && styles.micSpeaking,
-            isConnected && isPaused && styles.micPaused,
-          ]}
-        >
-          {isStarting || conversation.status === 'connecting' ? (
-            <Text style={styles.micLabel}>...</Text>
-          ) : isConnected && isPaused ? (
-            <PlayIcon size={28} color={colors.cream} />
-          ) : (
-            <MicIcon
-              size={32}
-              color={isConnected ? colors.white : colors.cream}
-            />
-          )}
-        </TouchableOpacity>
-
-        <Text style={styles.micHint}>
-          {isConnected
-            ? isPaused
-              ? 'Paused — tap to resume'
-              : 'Tap to pause'
-            : isStarting
-            ? 'Connecting to Dillow...'
-            : '¿Sobre qué te gustaría hablar?'}
-        </Text>
-      </View>
+      {/* ─── Bottom hint (when no text input shown) ─── */}
+      {(!isConnected || !showTranscript) && (
+        <View style={[styles.bottomHint, { paddingBottom: insets.bottom + 12 }]}>
+          <Text style={styles.bottomHintText}>
+            {isConnected
+              ? isPaused
+                ? 'Conversation paused'
+                : mode === 'speaking'
+                ? '🦜 Dillow is speaking...'
+                : '🎙 Listening...'
+              : isStarting
+              ? 'Connecting to Dillow...'
+              : '¿Sobre qué te gustaría hablar?'}
+          </Text>
+        </View>
+      )}
     </View>
   );
 }
+
+/* ══════════════════════════════════════ */
+/* ── STYLES ─────────────────────────── */
+/* ══════════════════════════════════════ */
 
 const styles = StyleSheet.create({
   root: {
@@ -457,120 +586,106 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
   },
 
-  // ── Header ──
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.creamDark,
   },
   headerBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.creamLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerCenter: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
+    marginLeft: 12,
   },
   headerTitle: {
     fontFamily: fonts.serif,
-    fontSize: 20,
-    color: colors.cream,
+    fontSize: 22,
+    color: colors.charcoal,
   },
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    marginTop: 1,
   },
   statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
   },
   statusText: {
     fontSize: 12,
     fontFamily: fonts.light,
-    color: 'rgba(245,237,224,0.7)',
+    color: colors.warmGray,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   endBtn: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: 'rgba(194,85,58,0.8)',
+    borderRadius: radii.full,
+    backgroundColor: colors.terracotta,
   },
   endBtnText: {
     fontFamily: fonts.semiBold,
     fontSize: 13,
-    color: colors.cream,
+    color: colors.white,
   },
 
-  // ── Chat Area ──
-  chatArea: {
-    flex: 1,
-  },
-  messageList: {
-    paddingHorizontal: 16,
-    paddingTop: 20,
-    paddingBottom: 12,
-    flexGrow: 1,
-  },
-
-  // ── Empty State ──
-  emptyState: {
+  /* ── Orb full view ── */
+  orbFullView: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 40,
+  },
+  idleText: {
+    alignItems: 'center',
     paddingHorizontal: 40,
-    paddingTop: 80,
+    marginTop: 8,
   },
-  emptyAvatarWrap: {
-    marginBottom: 24,
-    shadowColor: colors.tealDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 24,
-  },
-  emptyTitle: {
+  idleTitle: {
     fontFamily: fonts.serif,
     fontSize: 28,
     color: colors.charcoal,
     marginBottom: 10,
   },
-  emptySubtitle: {
+  idleSub: {
     fontFamily: fonts.regular,
     fontSize: 15,
     color: colors.warmGray,
     textAlign: 'center',
     lineHeight: 22,
   },
-
-  // ── Hidden Transcript ──
-  hiddenView: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  hiddenTitle: {
-    fontFamily: fonts.serif,
-    fontSize: 20,
-    color: colors.charcoal,
-  },
-  hiddenHint: {
-    fontFamily: fonts.regular,
+  orbHint: {
+    fontFamily: fonts.light,
     fontSize: 13,
     color: colors.warmGray,
+    marginTop: 8,
   },
 
-  // ── Text Input ──
+  /* ── Messages ── */
+  messageList: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
+    flexGrow: 1,
+  },
+
+  /* ── Text Input ── */
   textInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -583,7 +698,7 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     backgroundColor: colors.creamLight,
-    borderRadius: 20,
+    borderRadius: radii.full,
     paddingHorizontal: 16,
     paddingVertical: 10,
     fontFamily: fonts.regular,
@@ -604,55 +719,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.warmGrayLight,
   },
 
-  // ── Mic Button ──
-  micArea: {
+  /* ── Bottom hint ── */
+  bottomHint: {
     alignItems: 'center',
     paddingTop: 12,
-    backgroundColor: colors.cream,
     borderTopWidth: 1,
     borderTopColor: colors.creamDark,
   },
-  micPaused: {
-    backgroundColor: colors.warmGray,
-  },
-  micRing: {
-    position: 'absolute',
-    top: 12,
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    borderWidth: 3,
-    borderColor: colors.teal,
-  },
-  micButton: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.tealDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: colors.tealDark,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  micActive: {
-    backgroundColor: colors.teal,
-  },
-  micSpeaking: {
-    backgroundColor: colors.marigold,
-  },
-  micPressed: {
-    transform: [{ scale: 0.92 }],
-  },
-  micLabel: {
-    color: colors.cream,
-    fontSize: 24,
-    fontFamily: fonts.bold,
-  },
-  micHint: {
-    marginTop: 10,
+  bottomHintText: {
     fontFamily: fonts.serifItalic,
     fontSize: 14,
     color: colors.warmGray,

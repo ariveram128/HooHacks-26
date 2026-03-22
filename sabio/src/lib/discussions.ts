@@ -70,23 +70,79 @@ export async function deleteDiscussion(id: string): Promise<boolean> {
   return true;
 }
 
-export async function upvoteDiscussion(id: string): Promise<boolean> {
-  const { data: existing } = await supabase
-    .from('discussions')
-    .select('upvotes')
-    .eq('id', id)
-    .single();
+export type UpvoteResult = 'ok' | 'already' | 'fail';
 
-  if (!existing) return false;
+/** Returns which discussion ids the current user has already upvoted. */
+export async function fetchUpvotedIdsForUser(discussionIds: string[]): Promise<Set<string>> {
+  if (discussionIds.length === 0) return new Set();
 
-  const { error } = await supabase
-    .from('discussions')
-    .update({ upvotes: existing.upvotes + 1 })
-    .eq('id', id);
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) return new Set();
+
+  const { data, error } = await supabase
+    .from('discussion_upvotes')
+    .select('discussion_id')
+    .eq('user_id', uid)
+    .in('discussion_id', discussionIds);
 
   if (error) {
-    console.error('upvoteDiscussion error:', error.message);
-    return false;
+    console.error('fetchUpvotedIdsForUser error:', error.message);
+    return new Set();
   }
-  return true;
+
+  return new Set((data ?? []).map((r) => r.discussion_id as string));
+}
+
+/**
+ * One upvote per user per comment (enforced by discussion_upvotes table).
+ * Requires migration 003_discussion_upvotes.sql. If table is missing, returns fail.
+ */
+export async function upvoteDiscussion(discussionId: string): Promise<UpvoteResult> {
+  const { data: auth } = await supabase.auth.getUser();
+  const uid = auth.user?.id;
+  if (!uid) return 'fail';
+
+  const { error: insertError } = await supabase.from('discussion_upvotes').insert({
+    user_id: uid,
+    discussion_id: discussionId,
+  });
+
+  if (insertError) {
+    if (insertError.code === '23505') return 'already';
+    console.error('upvoteDiscussion insert:', insertError.message);
+    return 'fail';
+  }
+
+  const { data: row } = await supabase
+    .from('discussions')
+    .select('upvotes')
+    .eq('id', discussionId)
+    .single();
+
+  if (!row) {
+    await supabase
+      .from('discussion_upvotes')
+      .delete()
+      .eq('user_id', uid)
+      .eq('discussion_id', discussionId);
+    return 'fail';
+  }
+
+  const { error: updateError } = await supabase
+    .from('discussions')
+    .update({ upvotes: row.upvotes + 1 })
+    .eq('id', discussionId);
+
+  if (updateError) {
+    console.error('upvoteDiscussion update:', updateError.message);
+    await supabase
+      .from('discussion_upvotes')
+      .delete()
+      .eq('user_id', uid)
+      .eq('discussion_id', discussionId);
+    return 'fail';
+  }
+
+  return 'ok';
 }

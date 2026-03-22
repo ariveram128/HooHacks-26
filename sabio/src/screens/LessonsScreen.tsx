@@ -715,8 +715,8 @@ export default function LessonsScreen() {
         <VinePath containerHeight={containerHeight} />
 
         {/* Green dots along the vine */}
-        {dotData.map((dot) => (
-          <VineDot key={dot.key} {...dot} />
+        {dotData.map(({ key, ...dot }) => (
+          <VineDot key={key} {...dot} />
         ))}
 
         {/* Lush decorative leaves */}
