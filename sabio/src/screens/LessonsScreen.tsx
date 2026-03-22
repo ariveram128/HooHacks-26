@@ -25,7 +25,6 @@ import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
 import { lessons, Lesson } from '../data/lessons';
 import { getProgress, LessonProgress } from '../store/lessonProgress';
-import BottomNav from '../components/BottomNav';
 import {
   ChevronLeftIcon, ChevronRightIcon, BookIcon,
   AlphaIcon, NumericIcon, EarIcon, HandIcon, IdCardIcon, TextIcon, CubeIcon,
@@ -773,17 +772,6 @@ export default function LessonsScreen() {
         )}
       </Animated.View>
 
-      <View style={styles.bottomNavWrap}>
-        <BottomNav
-          activeTab="learn"
-          onTabPress={(tabId) => {
-            if (tabId === 'home') navigation.navigate('Home');
-            else if (tabId === 'chat') navigation.navigate('DillowChat');
-            else if (tabId === 'practice') navigation.navigate('Practice');
-            else if (tabId === 'account') navigation.navigate('Account');
-          }}
-        />
-      </View>
     </View>
   );
 }
@@ -950,8 +938,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: colors.white,
     letterSpacing: 0.3,
-  },
-  bottomNavWrap: {
-    zIndex: 15,
   },
 });

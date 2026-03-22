@@ -23,7 +23,6 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
 import { ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
-import BottomNav from '../components/BottomNav';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -528,15 +527,6 @@ export default function AccountScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <BottomNav
-        activeTab="account"
-        onTabPress={(tabId) => {
-          if (tabId === 'home') navigation.navigate('Home');
-          else if (tabId === 'learn') navigation.navigate('Lessons');
-          else if (tabId === 'chat') navigation.navigate('DillowChat');
-          else if (tabId === 'practice') navigation.navigate('Practice');
-        }}
-      />
     </View>
   );
 }
