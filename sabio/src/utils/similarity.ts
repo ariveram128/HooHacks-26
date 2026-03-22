@@ -42,3 +42,54 @@ export function similarity(input: string, expected: string): number {
 export function isCloseEnough(input: string, expected: string, threshold = 0.8): boolean {
   return similarity(input, expected) >= threshold;
 }
+
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * True if the user said the color somewhere in the phrase (STT rarely returns a single word).
+ * Handles e.g. "es rojo", "digo azul", "el color verde", or English "red" if `english` is passed.
+ */
+export function transcriptMatchesColor(
+  transcript: string,
+  colorName: string,
+  options?: { english?: string; threshold?: number; wordThreshold?: number },
+): boolean {
+  const threshold = options?.threshold ?? 0.72;
+  const wordThreshold = options?.wordThreshold ?? 0.82;
+
+  if (!transcript.trim()) return false;
+
+  // Whole utterance is basically just the color
+  if (isCloseEnough(transcript, colorName, threshold)) return true;
+
+  const t = normalize(transcript);
+  const cn = normalize(colorName);
+  if (!t || !cn) return false;
+
+  // Color appears as its own word inside a longer sentence
+  const asWord = new RegExp(`(^|\\s)${escapeRegExp(cn)}($|\\s)`);
+  if (asWord.test(t)) return true;
+
+  // Any token close to the Spanish color name (handles STT typos per word)
+  for (const word of t.split(/\s+/)) {
+    if (!word) continue;
+    if (isCloseEnough(word, colorName, wordThreshold)) return true;
+    if (word === cn) return true;
+  }
+
+  if (options?.english) {
+    if (isCloseEnough(transcript, options.english, threshold)) return true;
+    const en = normalize(options.english);
+    if (en) {
+      const enWord = new RegExp(`(^|\\s)${escapeRegExp(en)}($|\\s)`);
+      if (enWord.test(t)) return true;
+      for (const word of t.split(/\s+/)) {
+        if (isCloseEnough(word, options.english, wordThreshold)) return true;
+      }
+    }
+  }
+
+  return false;
+}

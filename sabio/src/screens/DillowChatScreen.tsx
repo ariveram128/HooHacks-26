@@ -2,37 +2,25 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
-  FlatList,
   Pressable,
   TouchableOpacity,
   StyleSheet,
   Animated,
-  KeyboardAvoidingView,
   Platform,
-  TextInput,
-  Keyboard,
   Dimensions,
   Easing,
 } from 'react-native';
 import { useConversation } from '@elevenlabs/react-native';
 import type { ConversationStatus, Role } from '@elevenlabs/react-native';
-import Svg, { Path, Circle as SvgCircle, Defs, RadialGradient, Stop } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
-import DillowAvatar from '../components/DillowAvatar';
-import TranscriptBubble from '../components/TranscriptBubble';
-import type { ChatMessage } from '../components/TranscriptBubble';
-import SuggestionBar from '../components/SuggestionBar';
 import {
   MicIcon,
-  ChevronRightIcon,
-  EyeIcon,
-  EyeOffIcon,
-  NotesIcon,
   PlayIcon,
   CloseIcon,
+  NotesIcon,
 } from '../components/Icons';
 import { colors, fonts, radii } from '../theme';
 
@@ -113,15 +101,16 @@ interface OrbProps {
   status: ConversationStatus;
   mode: 'speaking' | 'listening';
   isPaused: boolean;
-  isStarting: boolean;
   onPress: () => void;
-  compact?: boolean;
 }
 
-function DillowOrb({ status, mode, isPaused, isStarting, onPress, compact }: OrbProps) {
+function DillowOrb({ status, mode, isPaused, onPress }: OrbProps) {
   const isConnected = status === 'connected';
   const isConnecting = status === 'connecting';
   const breathe = useRef(new Animated.Value(1)).current;
+
+  // Smooth color blend: 0 = teal (listening/idle), 0.5 = warmGray (paused), 1 = marigold (speaking)
+  const colorAnim = useRef(new Animated.Value(0)).current;
 
   const intensity: WaveRingProps['intensity'] = !isConnected
     ? 'idle'
@@ -131,7 +120,7 @@ function DillowOrb({ status, mode, isPaused, isStarting, onPress, compact }: Orb
     ? 'speaking'
     : 'listening';
 
-  const orbSize = compact ? 100 : 140;
+  const orbSize = 110;
   const ringColors = [
     colors.teal + '60',
     colors.tealLight + '45',
@@ -139,7 +128,6 @@ function DillowOrb({ status, mode, isPaused, isStarting, onPress, compact }: Orb
     colors.terracottaLight + '25',
   ];
 
-  // Gentle idle breathe for the orb itself
   useEffect(() => {
     const anim = Animated.loop(
       Animated.sequence([
@@ -151,74 +139,100 @@ function DillowOrb({ status, mode, isPaused, isStarting, onPress, compact }: Orb
     return () => anim.stop();
   }, []);
 
-  const orbBg = isConnected
-    ? isPaused
-      ? colors.warmGray
+  // Smoothly animate color value when state changes
+  useEffect(() => {
+    const target = !isConnected
+      ? 0
+      : isPaused
+      ? 0.5
       : mode === 'speaking'
-      ? colors.marigold
-      : colors.teal
-    : isConnecting
-    ? colors.warmGray
-    : colors.tealDark;
+      ? 1
+      : 0;
+
+    Animated.timing(colorAnim, {
+      toValue: target,
+      duration: 600,
+      easing: Easing.inOut(Easing.ease),
+      useNativeDriver: false, // color interpolation requires JS driver
+    }).start();
+  }, [isConnected, isPaused, mode]);
+
+  // Interpolated background color: smooth blend between teal → warmGray → marigold
+  const orbBg = colorAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [colors.teal, colors.warmGray, colors.marigold],
+  });
 
   return (
-    <View style={[orbStyles.container, compact && { paddingVertical: 16 }]}>
-      {/* Wave rings */}
+    <View style={orbStyles.container}>
       {ringColors.map((c, i) => (
         <WaveRing
           key={i}
-          baseSize={orbSize + 30 + i * 28}
+          baseSize={orbSize + 26 + i * 24}
           color={c}
           delay={i * 120}
-          isActive={isConnected}
-          intensity={intensity}
+          isActive={isConnected || isConnecting}
+          intensity={isConnecting ? 'idle' : intensity}
         />
       ))}
 
-      {/* Outer glow */}
+      {/* Outer: native-driver scale only. Inner: JS-driver backgroundColor — never mix on one node. */}
       <Animated.View
         pointerEvents="none"
         style={[
           orbStyles.glow,
           {
-            width: orbSize + 40,
-            height: orbSize + 40,
-            borderRadius: (orbSize + 40) / 2,
-            backgroundColor: orbBg,
+            width: orbSize + 36,
+            height: orbSize + 36,
+            borderRadius: (orbSize + 36) / 2,
             transform: [{ scale: breathe }],
           },
         ]}
-      />
-
-      {/* Main orb */}
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={onPress}
-        disabled={isStarting || isConnecting}
       >
         <Animated.View
-          style={[
-            orbStyles.orb,
-            {
-              width: orbSize,
-              height: orbSize,
-              borderRadius: orbSize / 2,
-              backgroundColor: orbBg,
-              transform: [{ scale: breathe }],
-            },
-            Platform.select({
-              ios: { shadowColor: orbBg, shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 20 },
-              android: { elevation: 12 },
-            }),
-          ]}
+          style={{
+            width: '100%',
+            height: '100%',
+            borderRadius: (orbSize + 36) / 2,
+            backgroundColor: orbBg,
+          }}
+        />
+      </Animated.View>
+
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+        <Animated.View
+          style={{
+            width: orbSize,
+            height: orbSize,
+            borderRadius: orbSize / 2,
+            transform: [{ scale: breathe }],
+          }}
         >
-          {isStarting || isConnecting ? (
-            <Text style={orbStyles.dots}>...</Text>
-          ) : isConnected && isPaused ? (
-            <PlayIcon size={compact ? 26 : 32} color={colors.cream} />
-          ) : (
-            <MicIcon size={compact ? 28 : 36} color={colors.white} />
-          )}
+          <Animated.View
+            style={[
+              orbStyles.orb,
+              {
+                flex: 1,
+                borderRadius: orbSize / 2,
+                backgroundColor: orbBg,
+              },
+              Platform.select({
+                ios: {
+                  shadowColor: colors.tealDark,
+                  shadowOffset: { width: 0, height: 6 },
+                  shadowOpacity: 0.4,
+                  shadowRadius: 20,
+                },
+                android: { elevation: 12 },
+              }),
+            ]}
+          >
+            {isConnected && isPaused ? (
+              <PlayIcon size={28} color={colors.cream} />
+            ) : (
+              <MicIcon size={30} color={colors.white} />
+            )}
+          </Animated.View>
         </Animated.View>
       </TouchableOpacity>
     </View>
@@ -229,7 +243,7 @@ const orbStyles = StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 32,
+    paddingVertical: 24,
   },
   glow: {
     position: 'absolute',
@@ -239,10 +253,51 @@ const orbStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  dots: {
-    color: colors.cream,
-    fontSize: 28,
+});
+
+/* ══════════════════════════════════════ */
+/* ── Live Transcript Text ──────────── */
+/* ══════════════════════════════════════ */
+
+interface LiveTextProps {
+  text: string;
+  speaker: string;
+}
+
+function LiveText({ text, speaker }: LiveTextProps) {
+  const fadeIn = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    fadeIn.setValue(0);
+    Animated.timing(fadeIn, { toValue: 1, duration: 300, useNativeDriver: true }).start();
+  }, [text]);
+
+  if (!text) return null;
+
+  return (
+    <Animated.View style={[liveTextStyles.container, { opacity: fadeIn }]}>
+      <Text style={liveTextStyles.text}>
+        <Text style={liveTextStyles.speaker}>{speaker}: </Text>
+        {text}
+      </Text>
+    </Animated.View>
+  );
+}
+
+const liveTextStyles = StyleSheet.create({
+  container: {
+    paddingHorizontal: 28,
+    paddingBottom: 20,
+  },
+  text: {
+    fontFamily: fonts.regular,
+    fontSize: 18,
+    color: colors.charcoal,
+    lineHeight: 26,
+  },
+  speaker: {
     fontFamily: fonts.bold,
+    color: colors.charcoal,
   },
 });
 
@@ -253,30 +308,19 @@ const orbStyles = StyleSheet.create({
 export default function DillowChatScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
-  const flatListRef = useRef<FlatList<ChatMessage>>(null);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [textInput, setTextInput] = useState('');
-  const [isStarting, setIsStarting] = useState(false);
+  const [isLive, setIsLive] = useState(false); // true once user taps mic
   const [mode, setMode] = useState<'speaking' | 'listening'>('listening');
-  const [showTranscript, setShowTranscript] = useState(true);
-  const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
   const isPausedRef = useRef(false);
   const sessionActive = useRef(false);
 
-  const addMessage = useCallback(
-    (text: string, source: 'user' | 'agent') => {
-      const msg: ChatMessage = {
-        id: `${Date.now()}-${Math.random()}`,
-        text,
-        source,
-        timestamp: Date.now(),
-      };
-      setMessages((prev) => [...prev, msg]);
-    },
-    [],
-  );
+  // Track latest message from each side
+  const [latestText, setLatestText] = useState('');
+  const [latestSpeaker, setLatestSpeaker] = useState('');
+
+  // Fade for idle → live transition
+  const liveOpacity = useRef(new Animated.Value(0)).current;
 
   const conversation = useConversation({
     onConnect: () => {
@@ -296,7 +340,8 @@ export default function DillowChatScreen() {
       role: Role;
     }) => {
       if (props.message) {
-        addMessage(props.message, props.role === 'user' ? 'user' : 'agent');
+        setLatestText(props.message);
+        setLatestSpeaker(props.role === 'user' ? 'You' : 'Dillow');
       }
     },
     onModeChange: ({ mode: m }: { mode: 'speaking' | 'listening' }) =>
@@ -305,16 +350,7 @@ export default function DillowChatScreen() {
       console.log('Status:', status),
   });
 
-  useEffect(() => {
-    if (messages.length > 0 && showTranscript) {
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        100,
-      );
-    }
-  }, [messages.length, showTranscript]);
-
-  // ── Cleanup on unmount ──
+  // Cleanup on unmount
   const conversationRef = useRef(conversation);
   conversationRef.current = conversation;
 
@@ -329,14 +365,17 @@ export default function DillowChatScreen() {
   // ── Actions ──
 
   const startConversation = async () => {
-    if (isStarting) return;
-    setIsStarting(true);
+    // Immediately show live view
+    setIsLive(true);
+    Animated.timing(liveOpacity, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+
     try {
       await conversation.startSession({ agentId: AGENT_ID });
     } catch (e) {
       console.error('Failed to start:', e);
-    } finally {
-      setIsStarting(false);
+      // If connection fails, go back to idle
+      setIsLive(false);
+      liveOpacity.setValue(0);
     }
   };
 
@@ -350,12 +389,21 @@ export default function DillowChatScreen() {
     } catch (e) {
       console.error('End session error:', e);
     }
-  }, [conversation]);
+    // Go back to idle view
+    Animated.timing(liveOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+      setIsLive(false);
+      setLatestText('');
+      setLatestSpeaker('');
+    });
+  }, [conversation, liveOpacity]);
 
   const handleGoBack = useCallback(() => {
-    endConversation();
+    if (sessionActive.current) {
+      conversation.endSession('user').catch(() => {});
+      sessionActive.current = false;
+    }
     navigation.goBack();
-  }, [endConversation, navigation]);
+  }, [conversation, navigation]);
 
   const pauseDebounce = useRef(false);
   const togglePause = useCallback(() => {
@@ -380,14 +428,6 @@ export default function DillowChatScreen() {
     }
   }, [conversation]);
 
-  const handleSendText = () => {
-    const t = textInput.trim();
-    if (!t || conversation.status !== 'connected') return;
-    conversation.sendUserMessage(t);
-    setTextInput('');
-    Keyboard.dismiss();
-  };
-
   const handleOrbPress = () => {
     const s = conversation.status;
     if (s === 'disconnected') startConversation();
@@ -397,15 +437,7 @@ export default function DillowChatScreen() {
   // ── Derived ──
 
   const isConnected = conversation.status === 'connected';
-  const isDisconnected = conversation.status === 'disconnected';
-
-  const statusColor = isConnected
-    ? isPaused
-      ? colors.marigold
-      : colors.teal
-    : conversation.status === 'connecting'
-    ? colors.marigold
-    : colors.warmGrayLight;
+  const isConnecting = conversation.status === 'connecting';
 
   const statusLabel = isConnected
     ? isPaused
@@ -413,11 +445,17 @@ export default function DillowChatScreen() {
       : mode === 'speaking'
       ? 'Dillow is speaking...'
       : 'Listening...'
-    : conversation.status === 'connecting'
+    : isConnecting
     ? 'Connecting...'
     : '';
 
-  const hasMessages = messages.length > 0;
+  const statusColor = isConnected
+    ? isPaused
+      ? colors.marigold
+      : colors.teal
+    : isConnecting
+    ? colors.marigold
+    : colors.warmGrayLight;
 
   // ── Render ──
 
@@ -440,19 +478,10 @@ export default function DillowChatScreen() {
         </View>
 
         <View style={styles.headerActions}>
-          {isConnected && (
-            <Pressable onPress={() => setShowTranscript((v) => !v)} style={styles.headerBtn}>
-              {showTranscript ? (
-                <EyeIcon size={18} color={colors.charcoal} />
-              ) : (
-                <EyeOffIcon size={18} color={colors.charcoal} />
-              )}
-            </Pressable>
-          )}
           <Pressable onPress={() => navigation.navigate('Notes')} style={styles.headerBtn}>
             <NotesIcon size={18} color={colors.charcoal} />
           </Pressable>
-          {isConnected && (
+          {isLive && (
             <Pressable onPress={endConversation} style={styles.endBtn}>
               <Text style={styles.endBtnText}>End</Text>
             </Pressable>
@@ -460,117 +489,54 @@ export default function DillowChatScreen() {
         </View>
       </View>
 
-      {/* ─── Main Content ─── */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Orb + transcript layout */}
-        {!hasMessages || !showTranscript ? (
-          /* ── Full orb view (pre-conversation or transcript hidden) ── */
-          <View style={styles.orbFullView}>
-            <DillowOrb
-              status={conversation.status}
-              mode={mode}
-              isPaused={isPaused}
-              isStarting={isStarting}
-              onPress={handleOrbPress}
-            />
-
-            {!isConnected && !isStarting && (
-              <View style={styles.idleText}>
-                <Text style={styles.idleTitle}>Habla con Dillow</Text>
-                <Text style={styles.idleSub}>
-                  Tap the mic to start a voice conversation.{'\n'}
-                  Spanish or English — just talk naturally.
-                </Text>
-              </View>
-            )}
-
-            {isConnected && (
-              <Text style={styles.orbHint}>
-                {isPaused ? 'Paused — tap to resume' : 'Tap to pause'}
-              </Text>
-            )}
+      {/* ─── Idle View (pre-conversation) ─── */}
+      {!isLive && (
+        <View style={styles.idleView}>
+          <View style={styles.idleText}>
+            <Text style={styles.idleTitle}>Habla con Dillow</Text>
+            <Text style={styles.idleSub}>
+              Tap the mic to start a voice conversation.{'\n'}
+              Spanish or English — just talk naturally.
+            </Text>
           </View>
-        ) : (
-          /* ── Compact orb + transcript ── */
-          <View style={{ flex: 1 }}>
-            {/* Compact orb at top */}
-            <DillowOrb
-              status={conversation.status}
-              mode={mode}
-              isPaused={isPaused}
-              isStarting={isStarting}
-              onPress={handleOrbPress}
-              compact
-            />
 
-            {/* Transcript */}
-            <FlatList
-              ref={flatListRef}
-              data={messages}
-              renderItem={({ item }) => (
-                <TranscriptBubble
-                  message={item}
-                  isActive={activeMessageId === item.id}
-                  onActivate={() => setActiveMessageId(item.id)}
-                />
-              )}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.messageList}
-              showsVerticalScrollIndicator={false}
-              onScrollBeginDrag={() => setActiveMessageId(null)}
-              style={{ flex: 1 }}
-            />
+          <DillowOrb
+            status={conversation.status}
+            mode={mode}
+            isPaused={isPaused}
+            onPress={handleOrbPress}
+          />
+
+          <View style={[styles.idleFooter, { paddingBottom: insets.bottom + 12 }]}>
+            <Text style={styles.idleFooterText}>¿Sobre qué te gustaría hablar?</Text>
           </View>
-        )}
-
-        {/* ─── Suggestions ─── */}
-        {isConnected && <SuggestionBar />}
-
-        {/* ─── Text Input ─── */}
-        {isConnected && showTranscript && (
-          <View style={styles.textInputRow}>
-            <TextInput
-              style={styles.textInput}
-              value={textInput}
-              onChangeText={(t) => {
-                setTextInput(t);
-                if (t.length > 0) conversation.sendUserActivity();
-              }}
-              placeholder="Or type a message..."
-              placeholderTextColor={colors.warmGrayLight}
-              returnKeyType="send"
-              onSubmitEditing={handleSendText}
-              blurOnSubmit
-            />
-            <Pressable
-              onPress={handleSendText}
-              style={[styles.sendBtn, !textInput.trim() && styles.sendBtnDisabled]}
-              disabled={!textInput.trim()}
-            >
-              <ChevronRightIcon size={16} color={colors.white} />
-            </Pressable>
-          </View>
-        )}
-      </KeyboardAvoidingView>
-
-      {/* ─── Bottom hint (when no text input shown) ─── */}
-      {(!isConnected || !showTranscript) && (
-        <View style={[styles.bottomHint, { paddingBottom: insets.bottom + 12 }]}>
-          <Text style={styles.bottomHintText}>
-            {isConnected
-              ? isPaused
-                ? 'Conversation paused'
-                : mode === 'speaking'
-                ? '🦜 Dillow is speaking...'
-                : '🎙 Listening...'
-              : isStarting
-              ? 'Connecting to Dillow...'
-              : '¿Sobre qué te gustaría hablar?'}
-          </Text>
         </View>
+      )}
+
+      {/* ─── Live View (Gemini-style) ─── */}
+      {isLive && (
+        <Animated.View style={[styles.liveView, { opacity: liveOpacity }]}>
+          {/* Spacer pushes text + orb to bottom */}
+          <View style={{ flex: 1 }} />
+
+          {/* Latest transcript text — Gemini style */}
+          <LiveText text={latestText} speaker={latestSpeaker} />
+
+          {/* Orb */}
+          <DillowOrb
+            status={conversation.status}
+            mode={mode}
+            isPaused={isPaused}
+            onPress={handleOrbPress}
+          />
+
+          {/* Bottom hint */}
+          <View style={[styles.liveFooter, { paddingBottom: insets.bottom + 12 }]}>
+            <Text style={styles.liveFooterText}>
+              {isPaused ? 'Paused — tap orb to resume' : isConnecting ? 'Connecting...' : 'Tap orb to pause'}
+            </Text>
+          </View>
+        </Animated.View>
       )}
     </View>
   );
@@ -645,17 +611,16 @@ const styles = StyleSheet.create({
     color: colors.white,
   },
 
-  /* ── Orb full view ── */
-  orbFullView: {
+  /* ── Idle view ── */
+  idleView: {
     flex: 1,
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 40,
+    alignItems: 'center',
   },
   idleText: {
     alignItems: 'center',
     paddingHorizontal: 40,
-    marginTop: 8,
+    marginBottom: 16,
   },
   idleTitle: {
     fontFamily: fonts.serif,
@@ -670,65 +635,27 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 22,
   },
-  orbHint: {
-    fontFamily: fonts.light,
-    fontSize: 13,
-    color: colors.warmGray,
-    marginTop: 8,
-  },
-
-  /* ── Messages ── */
-  messageList: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 12,
-    flexGrow: 1,
-  },
-
-  /* ── Text Input ── */
-  textInputRow: {
-    flexDirection: 'row',
+  idleFooter: {
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    gap: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.creamDark,
+    marginTop: 20,
   },
-  textInput: {
-    flex: 1,
-    backgroundColor: colors.creamLight,
-    borderRadius: radii.full,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    fontFamily: fonts.regular,
-    fontSize: 14,
-    color: colors.charcoal,
-    borderWidth: 1,
-    borderColor: colors.creamDark,
-  },
-  sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.teal,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sendBtnDisabled: {
-    backgroundColor: colors.warmGrayLight,
-  },
-
-  /* ── Bottom hint ── */
-  bottomHint: {
-    alignItems: 'center',
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.creamDark,
-  },
-  bottomHintText: {
+  idleFooterText: {
     fontFamily: fonts.serifItalic,
     fontSize: 14,
+    color: colors.warmGray,
+  },
+
+  /* ── Live view ── */
+  liveView: {
+    flex: 1,
+  },
+  liveFooter: {
+    alignItems: 'center',
+    paddingTop: 8,
+  },
+  liveFooterText: {
+    fontFamily: fonts.light,
+    fontSize: 13,
     color: colors.warmGray,
   },
 });
