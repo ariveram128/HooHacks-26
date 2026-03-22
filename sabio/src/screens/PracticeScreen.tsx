@@ -19,7 +19,6 @@ import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
 import { MicIcon, GamepadIcon, ChevronRightIcon, CloseIcon } from '../components/Icons';
 import MiniOrb from '../components/MiniOrb';
-import BottomNav from '../components/BottomNav';
 import { getProgress, PracticeProgress } from '../store/practiceProgress';
 import { phrases } from '../data/phrases';
 
@@ -1173,15 +1172,6 @@ export default function PracticeScreen() {
         onPlay={handlePlay}
       />
 
-      <BottomNav
-        activeTab="practice"
-        onTabPress={(tabId) => {
-          if (tabId === 'home') navigation.navigate('Home');
-          else if (tabId === 'chat') navigation.navigate('DillowChat');
-          else if (tabId === 'learn') navigation.navigate('Lessons');
-          else if (tabId === 'account') navigation.navigate('Account');
-        }}
-      />
     </View>
   );
 }

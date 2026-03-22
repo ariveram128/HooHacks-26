@@ -16,7 +16,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import MiniOrb from '../components/MiniOrb';
 import StreakBadge from '../components/StreakBadge';
-import BottomNav from '../components/BottomNav';
 import {
   BookIcon,
   MicIcon,
@@ -26,7 +25,7 @@ import {
 } from '../components/Icons';
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, fonts, radii } from '../theme';
-import type { RootStackParamList } from '../navigation';
+import { type RootStackParamList, useTabSwitch } from '../navigation';
 import { useAuth } from '../context/AuthContext';
 import { getProgress as getLessonProgress, LessonProgress } from '../store/lessonProgress';
 import { getProgress as getPracticeProgress, PracticeProgress } from '../store/practiceProgress';
@@ -193,6 +192,7 @@ const dailyPhrases = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<Nav>();
+  const switchTab = useTabSwitch();
   const { user } = useAuth();
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
@@ -284,7 +284,7 @@ export default function HomeScreen() {
             {/* Continue lesson card */}
             {nextLesson && (
               <Pressable
-                onPress={() => navigation.navigate('Lessons')}
+                onPress={() => switchTab('learn')}
                 style={({ pressed }) => [styles.heroCard, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
               >
                 <LinearGradient
@@ -369,7 +369,7 @@ export default function HomeScreen() {
 
         {/* ── Quick Practice ── */}
         <StaggerIn delay={440} style={{ marginTop: 18 }}>
-          <SectionHeader title="Quick Practice" actionLabel="See all" onAction={() => navigation.navigate('Practice')} />
+          <SectionHeader title="Quick Practice" actionLabel="See all" onAction={() => switchTab('practice')} />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -468,15 +468,6 @@ export default function HomeScreen() {
         </StaggerIn>
       </ScrollView>
 
-      <BottomNav
-        activeTab="home"
-        onTabPress={(tabId) => {
-          if (tabId === 'chat') navigation.navigate('DillowChat');
-          else if (tabId === 'learn') navigation.navigate('Lessons');
-          else if (tabId === 'practice') navigation.navigate('Practice');
-          else if (tabId === 'account') navigation.navigate('Account');
-        }}
-      />
     </View>
   );
 }

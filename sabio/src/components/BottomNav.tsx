@@ -1,28 +1,35 @@
-import React, { useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Platform } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import {
+  View,
+  Text,
+  Pressable,
+  StyleSheet,
+  Animated,
+  Platform,
+  Dimensions,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { HomeIcon, BookIcon, ChatIcon, MicIcon, UserIcon } from './Icons';
 import { colors, fonts } from '../theme';
+import type { TabId } from '../navigation';
 
-type NavItem = {
-  id: string;
-  label: string;
-  icon: (props: { color: string; size: number }) => React.ReactNode;
-  isCenter?: boolean;
-};
+const SCREEN_W = Dimensions.get('window').width;
+const TAB_COUNT = 5;
+const TAB_W = SCREEN_W / TAB_COUNT;
+const INDICATOR_W = 20;
+const BUTTON_SIZE = 58;
 
-const navItems: NavItem[] = [
-  { id: 'home', label: 'Home', icon: ({ color, size }) => <HomeIcon size={size} color={color} /> },
-  { id: 'learn', label: 'Learn', icon: ({ color, size }) => <BookIcon size={size} color={color} /> },
-  { id: 'chat', label: 'Dillow', icon: ({ color, size }) => <ChatIcon size={size} color={color} />, isCenter: true },
-  { id: 'practice', label: 'Practice', icon: ({ color, size }) => <MicIcon size={size} color={color} /> },
-  { id: 'account', label: 'Account', icon: ({ color, size }) => <UserIcon size={size} color={color} /> },
+function indicatorX(index: number) {
+  return TAB_W * index + (TAB_W - INDICATOR_W) / 2;
+}
+
+const tabMeta: { id: TabId; label: string; icon: any; isCenter?: boolean }[] = [
+  { id: 'home', label: 'Home', icon: HomeIcon },
+  { id: 'learn', label: 'Learn', icon: BookIcon },
+  { id: 'chat', label: 'Dillow', icon: ChatIcon, isCenter: true },
+  { id: 'practice', label: 'Practice', icon: MicIcon },
+  { id: 'account', label: 'Account', icon: UserIcon },
 ];
-
-type BottomNavProps = {
-  activeTab: string;
-  onTabPress: (tabId: string) => void;
-};
 
 function CenterButton({ onPress }: { onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
@@ -47,31 +54,56 @@ function CenterButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+type BottomNavProps = {
+  activeTab: TabId;
+  onTabPress: (id: TabId) => void;
+};
+
 export default function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
   const insets = useSafeAreaInsets();
 
+  const activeVisualIndex = tabMeta.findIndex((t) => t.id === activeTab);
+  const slideX = useRef(new Animated.Value(indicatorX(activeVisualIndex))).current;
+
+  useEffect(() => {
+    Animated.spring(slideX, {
+      toValue: indicatorX(activeVisualIndex),
+      damping: 20,
+      stiffness: 200,
+      useNativeDriver: true,
+    }).start();
+  }, [activeVisualIndex]);
+
   return (
     <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) }]}>
-      {navItems.map((item) => {
-        if (item.isCenter) {
+      {/* Sliding indicator — behind center button */}
+      <Animated.View
+        style={[
+          styles.slidingIndicator,
+          { transform: [{ translateX: slideX }] },
+        ]}
+      />
+
+      {tabMeta.map((tab) => {
+        if (tab.isCenter) {
           return (
-            <CenterButton key={item.id} onPress={() => onTabPress(item.id)} />
+            <CenterButton key={tab.id} onPress={() => onTabPress('chat')} />
           );
         }
 
-        const isActive = activeTab === item.id;
+        const isActive = activeTab === tab.id;
         const itemColor = isActive ? colors.teal : colors.warmGrayLight;
+        const Icon = tab.icon;
 
         return (
           <Pressable
-            key={item.id}
-            onPress={() => onTabPress(item.id)}
+            key={tab.id}
+            onPress={() => onTabPress(tab.id)}
             style={styles.navItem}
           >
-            {isActive && <View style={styles.activeIndicator} />}
-            {item.icon({ color: itemColor, size: 22 })}
+            <Icon size={22} color={itemColor} />
             <Text style={[styles.label, { color: itemColor }]}>
-              {item.label}
+              {tab.label}
             </Text>
           </Pressable>
         );
@@ -79,8 +111,6 @@ export default function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
     </View>
   );
 }
-
-const BUTTON_SIZE = 58;
 
 const styles = StyleSheet.create({
   container: {
@@ -96,20 +126,22 @@ const styles = StyleSheet.create({
     borderTopColor: colors.creamDark,
     paddingTop: 10,
   },
+  slidingIndicator: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: INDICATOR_W,
+    height: 3,
+    backgroundColor: colors.teal,
+    borderRadius: 2,
+    zIndex: 1,
+  },
   navItem: {
     alignItems: 'center',
     gap: 3,
     paddingHorizontal: 12,
     paddingVertical: 4,
-    position: 'relative',
-  },
-  activeIndicator: {
-    position: 'absolute',
-    top: -10,
-    width: 20,
-    height: 3,
-    backgroundColor: colors.teal,
-    borderRadius: 2,
+    width: TAB_W,
   },
   label: {
     fontSize: 10,
@@ -118,7 +150,9 @@ const styles = StyleSheet.create({
   },
   centerWrapper: {
     alignItems: 'center',
-    marginTop: -(BUTTON_SIZE / 2 + 4), // pop up above the bar
+    marginTop: -(BUTTON_SIZE / 2 + 4),
+    width: TAB_W,
+    zIndex: 10,
   },
   centerButton: {
     width: BUTTON_SIZE,
