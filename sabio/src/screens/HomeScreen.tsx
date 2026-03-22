@@ -24,6 +24,7 @@ import {
   GamepadIcon,
   ChevronRightIcon,
 } from '../components/Icons';
+import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
 import { colors, fonts, radii } from '../theme';
 import type { RootStackParamList } from '../navigation';
 import { useAuth } from '../context/AuthContext';
@@ -36,6 +37,36 @@ const HERO_CARD_W = SCREEN_W * 0.78;
 const SMALL_CARD_W = SCREEN_W * 0.42;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const LESSON_ICON_NAME: Record<string, { lib: 'feather' | 'mci'; name: string }> = {
+  alfabeto: { lib: 'mci', name: 'alpha-a-box-outline' },
+  numeros: { lib: 'mci', name: 'numeric' },
+  pronunciacion: { lib: 'mci', name: 'ear-hearing' },
+  saludos: { lib: 'mci', name: 'hand-wave-outline' },
+  presentaciones: { lib: 'mci', name: 'card-account-details-outline' },
+  articulos: { lib: 'mci', name: 'format-text' },
+  sustantivos: { lib: 'mci', name: 'cube-outline' },
+  pronombres: { lib: 'mci', name: 'account-switch-outline' },
+  'ser-estar': { lib: 'mci', name: 'scale-balance' },
+  'presente-regular': { lib: 'feather', name: 'clock' },
+  'presente-irregular': { lib: 'mci', name: 'lightning-bolt-outline' },
+  preguntas: { lib: 'mci', name: 'comment-question-outline' },
+  adjetivos: { lib: 'mci', name: 'palette-outline' },
+  preterito: { lib: 'mci', name: 'history' },
+  imperfecto: { lib: 'mci', name: 'update' },
+  futuro: { lib: 'mci', name: 'rocket-launch-outline' },
+  subjuntivo: { lib: 'mci', name: 'thought-bubble-outline' },
+  condicional: { lib: 'mci', name: 'source-branch' },
+  'por-para': { lib: 'mci', name: 'arrow-decision-outline' },
+  expresiones: { lib: 'mci', name: 'format-quote-open' },
+};
+
+function LessonIcon({ lessonId, size, color }: { lessonId: string; size: number; color: string }) {
+  const entry = LESSON_ICON_NAME[lessonId];
+  if (!entry) return <BookIcon size={size} color={color} />;
+  if (entry.lib === 'feather') return <Feather name={entry.name as any} size={size} color={color} />;
+  return <MaterialCommunityIcons name={entry.name as any} size={size} color={color} />;
+}
 
 /* ══════════════════════════════════════ */
 /* ── SVG Patterns ───────────────────── */
@@ -266,10 +297,10 @@ export default function HomeScreen() {
                   <View style={styles.heroInner}>
                     <View style={styles.heroTopRow}>
                       <View style={styles.heroIconWrap}>
-                        <BookIcon size={22} color={colors.white} />
+                        <LessonIcon lessonId={nextLesson.id} size={22} color={colors.white} />
                       </View>
                       <View style={styles.heroBadge}>
-                        <Text style={styles.heroBadgeText}>{nextLessonSection?.title ?? 'LESSON'}</Text>
+                        <Text style={styles.heroBadgeText}>LESSON</Text>
                       </View>
                     </View>
                     <View style={{ flex: 1 }} />
@@ -286,7 +317,7 @@ export default function HomeScreen() {
         </StaggerIn>
 
         {/* ── Stats bar ── */}
-        <StaggerIn delay={240} style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 6 }}>
+        <StaggerIn delay={240} style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 0 }}>
           <View style={styles.statsBar}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{completedLessons}</Text>
@@ -303,15 +334,11 @@ export default function HomeScreen() {
               <Text style={styles.statLabel}>Best streak</Text>
             </View>
             <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Text style={styles.statValue}>{practiceProg.colorGameHighScore}</Text>
-              <Text style={styles.statLabel}>High score</Text>
-            </View>
           </View>
         </StaggerIn>
 
         {/* ── Phrase of the Day ── */}
-        <StaggerIn delay={340} style={{ marginTop: 24 }}>
+        <StaggerIn delay={340} style={{ marginTop: 18 }}>
           <SectionHeader title="Frase del Día" />
           <Pressable
             onPress={() => setShowTranslation(!showTranslation)}
@@ -341,7 +368,7 @@ export default function HomeScreen() {
         </StaggerIn>
 
         {/* ── Quick Practice ── */}
-        <StaggerIn delay={440} style={{ marginTop: 24 }}>
+        <StaggerIn delay={440} style={{ marginTop: 18 }}>
           <SectionHeader title="Quick Practice" actionLabel="See all" onAction={() => navigation.navigate('Practice')} />
           <ScrollView
             horizontal
@@ -500,7 +527,7 @@ const styles = StyleSheet.create({
   heroCard: {
     width: HERO_CARD_W,
     height: HERO_CARD_W * 0.72,
-    borderRadius: radii.xxl,
+    borderRadius: radii.md,
     marginRight: 14,
     overflow: 'hidden',
     ...Platform.select({
@@ -510,7 +537,7 @@ const styles = StyleSheet.create({
   },
   heroGradient: {
     flex: 1,
-    borderRadius: radii.xxl,
+    borderRadius: radii.md,
     overflow: 'hidden',
   },
   heroInner: {
@@ -531,14 +558,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   heroBadge: {
-    backgroundColor: 'rgba(255,255,255,0.18)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
   },
   heroBadgeText: {
     fontFamily: fonts.semiBold,
-    fontSize: 10,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.85)',
     letterSpacing: 1,
   },
@@ -570,7 +596,7 @@ const styles = StyleSheet.create({
   statsBar: {
     flexDirection: 'row',
     backgroundColor: colors.creamLight,
-    borderRadius: radii.lg,
+    borderRadius: radii.sm,
     borderWidth: 1,
     borderColor: colors.creamDark,
     paddingVertical: 16,
@@ -602,7 +628,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.creamLight,
     borderWidth: 1.5,
     borderColor: colors.creamDark,
-    borderRadius: radii.xl,
+    borderRadius: radii.md,
     padding: 22,
     marginHorizontal: 20,
   },
@@ -663,7 +689,7 @@ const styles = StyleSheet.create({
   smallCard: {
     width: SMALL_CARD_W,
     height: SMALL_CARD_W * 1.15,
-    borderRadius: radii.xl,
+    borderRadius: radii.md,
     overflow: 'hidden',
     marginRight: 14,
     ...Platform.select({
@@ -673,7 +699,7 @@ const styles = StyleSheet.create({
   },
   smallGradient: {
     flex: 1,
-    borderRadius: radii.xl,
+    borderRadius: radii.md,
     overflow: 'hidden',
   },
   smallInner: {
@@ -717,7 +743,7 @@ const styles = StyleSheet.create({
 
   /* ── Dillow banner ── */
   dillowBanner: {
-    borderRadius: radii.xl,
+    borderRadius: radii.md,
     overflow: 'hidden',
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10 },
@@ -725,7 +751,7 @@ const styles = StyleSheet.create({
     }),
   },
   dillowBannerGradient: {
-    borderRadius: radii.xl,
+    borderRadius: radii.md,
     overflow: 'hidden',
   },
   dillowBannerInner: {
