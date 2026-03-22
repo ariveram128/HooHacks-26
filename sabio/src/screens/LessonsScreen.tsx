@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   Animated,
   Easing,
   Platform,
@@ -16,6 +15,7 @@ import Svg, {
   Defs,
   LinearGradient as SvgGradient,
   Stop,
+  Circle as SvgCircle,
 } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,80 +29,269 @@ import BottomNav from '../components/BottomNav';
 import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon } from '../components/Icons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // ═══════════════════════════════════════════
-// VINE MATH
+// LAYOUT CONSTANTS
 // ═══════════════════════════════════════════
-const VINE_CENTER_X = SCREEN_W / 2;
-const AMPLITUDE = SCREEN_W * 0.14;
-const FREQUENCY = 0.0038;
-const NODE_SPACING = 155;
+const VINE_CENTER_X = SCREEN_W * 0.22;
+const AMPLITUDE = SCREEN_W * 0.06;
+const FREQUENCY = 0.005;
+const NODE_SPACING = 110;
 const TOP_PADDING = 160;
-const CARD_W = 200;
-const CARD_MARGIN = 10;
-
-function vineX(y: number): number {
-  return (
-    VINE_CENTER_X +
-    Math.sin(y * FREQUENCY) * AMPLITUDE +
-    Math.sin(y * FREQUENCY * 2.3) * (AMPLITUDE * 0.25)
-  );
-}
-
-function nodeY(index: number): number {
-  return TOP_PADDING + index * NODE_SPACING;
-}
+const HEX_SIZE = 52;
+const SECTION_HEADER_HEIGHT = 70;
 
 // ═══════════════════════════════════════════
 // SECTION ACCENTS
 // ═══════════════════════════════════════════
-const SECTION_ACCENT: Record<string, { border: string; bg: string; iconBg: string }> = {
-  raices: { border: colors.teal, bg: colors.teal, iconBg: colors.tealDark },
-  brotes: { border: colors.tealLight, bg: colors.tealLight, iconBg: colors.teal },
-  ramas: { border: colors.terracotta, bg: colors.terracotta, iconBg: colors.terracottaDark },
-  copa: { border: colors.marigold, bg: colors.marigold, iconBg: colors.marigoldDark },
+const SECTION_ACCENT: Record<string, { primary: string; dark: string; light: string }> = {
+  raices: { primary: colors.teal, dark: colors.tealDark, light: colors.tealLight },
+  brotes: { primary: colors.tealLight, dark: colors.teal, light: '#3AAB9A' },
+  ramas: { primary: colors.terracotta, dark: colors.terracottaDark, light: colors.terracottaLight },
+  copa: { primary: colors.marigold, dark: colors.marigoldDark, light: colors.marigoldLight },
 };
 
-const LEAF_COLORS = [colors.teal, colors.tealLight, colors.tealDark, '#2A8B7A', '#3A9B8A'];
+const SECTION_ICON: Record<string, (p: { size: number; color: string }) => React.ReactNode> = {
+  raices: (p) => <BookIcon {...p} />,
+  brotes: (p) => <NotesIcon {...p} />,
+  ramas: (p) => <ChatIcon {...p} />,
+  copa: (p) => <GamepadIcon {...p} />,
+};
 
 // ═══════════════════════════════════════════
-// ANIMATED LEAF (pure View, no SVG)
+// VINE MATH
 // ═══════════════════════════════════════════
-interface LeafProps {
-  x: number;
-  y: number;
-  rotation: number;
-  scale: number;
-  delay: number;
-  variant: number;
-  color: string;
+function vineX(y: number): number {
+  return VINE_CENTER_X + Math.sin(y * FREQUENCY) * AMPLITUDE + Math.sin(y * FREQUENCY * 2.6) * (AMPLITUDE * 0.3);
 }
 
-const AnimatedLeaf: React.FC<LeafProps> = ({ x, y, rotation, scale, delay, color }) => {
+// Build node positions with section headers interleaved
+type NodeItem =
+  | { type: 'section'; sectionId: string; title: string; subtitle: string; y: number }
+  | { type: 'lesson'; lesson: Lesson; index: number; y: number };
+
+function buildNodeList(): { items: NodeItem[]; totalHeight: number } {
+  const items: NodeItem[] = [];
+  let y = TOP_PADDING;
+  let lastSectionId = '';
+
+  lessons.forEach((lesson, i) => {
+    if (lesson.sectionId !== lastSectionId) {
+      const sec = sections.find((s) => s.id === lesson.sectionId);
+      if (sec) {
+        items.push({ type: 'section', sectionId: sec.id, title: sec.title, subtitle: sec.subtitle, y });
+        y += SECTION_HEADER_HEIGHT;
+      }
+      lastSectionId = lesson.sectionId;
+    }
+    items.push({ type: 'lesson', lesson, index: i, y });
+    y += NODE_SPACING;
+  });
+
+  return { items, totalHeight: y + 120 };
+}
+
+// ═══════════════════════════════════════════
+// VINE PATH (SVG) — color transitions per section
+// ═══════════════════════════════════════════
+const VinePath: React.FC<{ containerHeight: number }> = ({ containerHeight }) => {
+  if (containerHeight <= 0) return null;
+
+  const safeH = Math.round(containerHeight);
+  const points: string[] = [];
+  for (let y = -50; y <= safeH + 50; y += 3) {
+    const x = vineX(y);
+    points.push(`${y === -50 ? 'M' : 'L'}${x.toFixed(1)},${y}`);
+  }
+  const pathD = points.join(' ');
+
+  return (
+    <Svg width={SCREEN_W} height={safeH} style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Defs>
+        <SvgGradient id="vineGrad" x1="0" y1="0" x2="0" y2="1">
+          <Stop offset="0%" stopColor={colors.teal} />
+          <Stop offset="30%" stopColor={colors.tealLight} />
+          <Stop offset="55%" stopColor={colors.terracotta} />
+          <Stop offset="80%" stopColor={colors.marigold} />
+          <Stop offset="100%" stopColor={colors.marigoldLight} />
+        </SvgGradient>
+      </Defs>
+      {/* Soft glow */}
+      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.08)" strokeWidth={16} strokeLinecap="round" />
+      {/* Main vine */}
+      <Path d={pathD} fill="none" stroke="url(#vineGrad)" strokeWidth={4} strokeLinecap="round" />
+    </Svg>
+  );
+};
+
+// ═══════════════════════════════════════════
+// COLOR-BY-POSITION (matches vine gradient)
+// ═══════════════════════════════════════════
+// Vine gradient: 0% teal → 30% tealLight → 55% terracotta → 80% marigold → 100% marigoldLight
+// We lerp between hex colors based on y / containerHeight
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+}
+function rgbToHex(r: number, g: number, b: number): string {
+  return '#' + [r, g, b].map((c) => Math.round(c).toString(16).padStart(2, '0')).join('');
+}
+function lerpColor(a: string, b: string, t: number): string {
+  const [r1, g1, b1] = hexToRgb(a);
+  const [r2, g2, b2] = hexToRgb(b);
+  return rgbToHex(r1 + (r2 - r1) * t, g1 + (g2 - g1) * t, b1 + (b2 - b1) * t);
+}
+
+const VINE_COLOR_STOPS: { pos: number; color: string }[] = [
+  { pos: 0, color: colors.teal },
+  { pos: 0.3, color: colors.tealLight },
+  { pos: 0.55, color: colors.terracotta },
+  { pos: 0.8, color: colors.marigold },
+  { pos: 1, color: colors.marigoldLight },
+];
+
+function vineColorAt(t: number): string {
+  const clamped = Math.max(0, Math.min(1, t));
+  for (let i = 0; i < VINE_COLOR_STOPS.length - 1; i++) {
+    const a = VINE_COLOR_STOPS[i];
+    const b = VINE_COLOR_STOPS[i + 1];
+    if (clamped >= a.pos && clamped <= b.pos) {
+      const local = (clamped - a.pos) / (b.pos - a.pos);
+      return lerpColor(a.color, b.color, local);
+    }
+  }
+  return VINE_COLOR_STOPS[VINE_COLOR_STOPS.length - 1].color;
+}
+
+// Variant shades: slightly darker or lighter for variety
+function vineColorVariant(t: number, seed: number): string {
+  const base = vineColorAt(t);
+  // Shift the t slightly based on seed for neighboring color variation
+  const offset = (Math.sin(seed * 3.7) * 0.06);
+  return vineColorAt(Math.max(0, Math.min(1, t + offset)));
+}
+
+// ═══════════════════════════════════════════
+// VINE DOTS (dots along the vine, color-matched)
+// ═══════════════════════════════════════════
+interface VineDotData { key: string; x: number; y: number; size: number; color: string; opacity: number }
+
+function generateVineDots(containerHeight: number): VineDotData[] {
+  const result: VineDotData[] = [];
+  let id = 0;
+  for (let y = 30; y <= containerHeight; y += 18 + Math.sin(y * 0.3) * 6) {
+    const x = vineX(y);
+    const side = Math.sin(y * 1.1) > 0 ? 1 : -1;
+    const dist = 2 + Math.abs(Math.sin(y * 0.4)) * 5;
+    const t = y / containerHeight;
+    result.push({
+      key: `dot-${id++}`,
+      x: x + side * dist,
+      y,
+      size: 3 + Math.abs(Math.sin(y * 0.7)) * 3,
+      color: vineColorVariant(t, y),
+      opacity: 0.25 + Math.abs(Math.sin(y * 0.5)) * 0.3,
+    });
+  }
+  return result;
+}
+
+const VineDot: React.FC<VineDotData> = ({ x, y, size, color, opacity }) => (
+  <View
+    pointerEvents="none"
+    style={{
+      position: 'absolute',
+      left: Math.round(x) - size / 2,
+      top: Math.round(y) - size / 2,
+      width: size,
+      height: size,
+      borderRadius: size / 2,
+      backgroundColor: color,
+      opacity,
+    }}
+  />
+);
+
+// ═══════════════════════════════════════════
+// ANIMATED LEAF (dense, lush, color-matched)
+// ═══════════════════════════════════════════
+
+interface LeafData { key: string; x: number; y: number; rotation: number; scale: number; delay: number; color: string }
+
+function generateLeaves(containerHeight: number): LeafData[] {
+  const result: LeafData[] = [];
+  let id = 0;
+  // Primary leaves — every ~30px along vine
+  for (let y = 40; y <= containerHeight; y += 28 + Math.sin(y * 0.6) * 10) {
+    const x = vineX(y);
+    const t = y / containerHeight;
+    const tangentX =
+      Math.cos(y * FREQUENCY) * AMPLITUDE * FREQUENCY +
+      Math.cos(y * FREQUENCY * 2.6) * (AMPLITUDE * 0.3) * FREQUENCY * 2.6;
+    const side = Math.sin(y * 0.7) > 0 ? 1 : -1;
+    const rot = (Math.atan2(1, tangentX) * 180) / Math.PI + side * 50 + Math.sin(y * 0.3) * 20;
+
+    result.push({
+      key: `leaf-${id++}`,
+      x: x + side * 12,
+      y,
+      rotation: rot,
+      scale: 0.5 + Math.sin(y * 0.2) * 0.2,
+      delay: y * 0.003,
+      color: vineColorVariant(t, y),
+    });
+
+    // Secondary leaf on opposite side (every other)
+    if (Math.sin(y * 1.3) > 0.2) {
+      result.push({
+        key: `leaf-${id++}`,
+        x: x - side * 10,
+        y: y + 10,
+        rotation: rot + 120,
+        scale: 0.35 + Math.sin(y * 0.4) * 0.12,
+        delay: y * 0.003 + 0.3,
+        color: vineColorVariant(t, y + 50),
+      });
+    }
+
+    // Occasional third tiny leaf cluster
+    if (Math.sin(y * 2.1) > 0.6) {
+      result.push({
+        key: `leaf-${id++}`,
+        x: x + side * 5,
+        y: y - 8,
+        rotation: rot - 60,
+        scale: 0.25 + Math.sin(y * 0.8) * 0.08,
+        delay: y * 0.003 + 0.5,
+        color: vineColorVariant(t, y + 100),
+      });
+    }
+  }
+  return result;
+}
+
+const AnimatedLeaf: React.FC<LeafData> = ({ x, y, rotation, scale, delay, color }) => {
   const sway = useRef(new Animated.Value(0)).current;
   const fadeIn = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    const t = setTimeout(() => {
       Animated.parallel([
-        Animated.loop(
-          Animated.sequence([
-            Animated.timing(sway, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            Animated.timing(sway, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          ]),
-        ),
+        Animated.loop(Animated.sequence([
+          Animated.timing(sway, { toValue: 1, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+          Animated.timing(sway, { toValue: 0, duration: 2500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        ])),
         Animated.timing(fadeIn, { toValue: 1, duration: 700, easing: Easing.out(Easing.ease), useNativeDriver: true }),
       ]).start();
     }, delay * 250);
-    return () => clearTimeout(timeout);
+    return () => clearTimeout(t);
   }, []);
 
   const swayDeg = sway.interpolate({ inputRange: [0, 1], outputRange: ['-4deg', '4deg'] });
-  const s = Math.max(scale, 0.3);
+  const s = Math.max(scale, 0.25);
   const size = Math.round(14 * s);
-  const rotDeg = `${Math.round(rotation)}deg`;
 
   return (
     <Animated.View
@@ -119,44 +308,23 @@ const AnimatedLeaf: React.FC<LeafProps> = ({ x, y, rotation, scale, delay, color
         borderBottomRightRadius: size,
         backgroundColor: color,
         opacity: fadeIn,
-        transform: [
-          { rotate: swayDeg },
-          { rotate: rotDeg },
-          { scale: s },
-        ],
+        transform: [{ rotate: swayDeg }, { rotate: `${rotation}deg` }, { scale: s }],
       }}
     />
   );
 };
 
 // ═══════════════════════════════════════════
-// WARM PARTICLE (replaces firefly)
+// SHIMMER (pulse on current lesson hex)
 // ═══════════════════════════════════════════
-const WarmParticle: React.FC<{ delay: number; maxY: number }> = ({ delay, maxY }) => {
-  const opacity = useRef(new Animated.Value(0)).current;
-  const translateX = useRef(new Animated.Value(0)).current;
-  const translateY = useRef(new Animated.Value(0)).current;
-  const startX = useRef(Math.random() * SCREEN_W).current;
-  const startY = useRef(100 + Math.random() * Math.min(maxY, SCREEN_H * 2)).current;
+const Shimmer: React.FC<{ color: string }> = ({ color }) => {
+  const anim = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      Animated.loop(
-        Animated.sequence([
-          Animated.parallel([
-            Animated.timing(opacity, { toValue: 0.5, duration: 2000, useNativeDriver: true }),
-            Animated.timing(translateX, { toValue: 20 - Math.random() * 40, duration: 5000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            Animated.timing(translateY, { toValue: -30 - Math.random() * 30, duration: 5000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          ]),
-          Animated.parallel([
-            Animated.timing(opacity, { toValue: 0, duration: 2000, useNativeDriver: true }),
-            Animated.timing(translateX, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-            Animated.timing(translateY, { toValue: 0, duration: 4000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-          ]),
-        ]),
-      ).start();
-    }, delay * 1500);
-    return () => clearTimeout(timeout);
+    Animated.loop(Animated.sequence([
+      Animated.timing(anim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+      Animated.timing(anim, { toValue: 0.4, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+    ])).start();
   }, []);
 
   return (
@@ -164,141 +332,13 @@ const WarmParticle: React.FC<{ delay: number; maxY: number }> = ({ delay, maxY }
       pointerEvents="none"
       style={{
         position: 'absolute',
-        left: startX,
-        top: startY,
-        width: 4,
-        height: 4,
-        borderRadius: 2,
-        backgroundColor: colors.marigoldLight,
-        opacity,
-        transform: [{ translateX }, { translateY }],
-        ...Platform.select({
-          ios: {
-            shadowColor: colors.marigold,
-            shadowOffset: { width: 0, height: 0 },
-            shadowOpacity: 0.4,
-            shadowRadius: 4,
-          },
-          android: { elevation: 2 },
-        }),
-      }}
-    />
-  );
-};
-
-// ═══════════════════════════════════════════
-// VINE PATH (SVG)
-// ═══════════════════════════════════════════
-const VinePath: React.FC<{ containerHeight: number }> = ({ containerHeight }) => {
-  if (containerHeight <= 0) return null;
-
-  const safeH = Math.round(containerHeight);
-  const points: string[] = [];
-  for (let y = -50; y <= safeH + 50; y += 4) {
-    const x = vineX(y);
-    points.push(`${y === -50 ? 'M' : 'L'}${Math.round(x)},${y}`);
-  }
-  const pathD = points.join(' ');
-
-  return (
-    <Svg
-      width={SCREEN_W}
-      height={safeH}
-      style={{ position: 'absolute', top: 0, left: 0 }}
-      pointerEvents="none"
-    >
-      <Defs>
-        <SvgGradient id="vineGrad" x1="0" y1="0" x2="0" y2="1">
-          <Stop offset="0%" stopColor={colors.tealLight} />
-          <Stop offset="50%" stopColor={colors.teal} />
-          <Stop offset="100%" stopColor={colors.tealDark} />
-        </SvgGradient>
-      </Defs>
-
-      {/* Shadow */}
-      <Path d={pathD} fill="none" stroke="rgba(26,107,94,0.12)" strokeWidth={8} strokeLinecap="round" />
-      {/* Main vine */}
-      <Path d={pathD} fill="none" stroke="url(#vineGrad)" strokeWidth={5} strokeLinecap="round" />
-      {/* Highlight */}
-      <Path d={pathD} fill="none" stroke={colors.tealLight} strokeWidth={1.5} strokeLinecap="round" opacity={0.25} />
-    </Svg>
-  );
-};
-
-// ═══════════════════════════════════════════
-// GENERATE LEAF DATA
-// ═══════════════════════════════════════════
-interface LeafData {
-  key: string;
-  x: number;
-  y: number;
-  rotation: number;
-  scale: number;
-  delay: number;
-  variant: number;
-  color: string;
-}
-
-function generateLeaves(containerHeight: number): LeafData[] {
-  const result: LeafData[] = [];
-  let id = 0;
-  for (let y = 40; y <= containerHeight; y += 35 + Math.sin(y) * 15) {
-    const x = vineX(y);
-    const tangentX =
-      Math.cos(y * FREQUENCY) * AMPLITUDE * FREQUENCY +
-      Math.cos(y * FREQUENCY * 2.3) * (AMPLITUDE * 0.25) * FREQUENCY * 2.3;
-    const side = Math.sin(y * 0.7) > 0 ? 1 : -1;
-    const rot = (Math.atan2(1, tangentX) * 180) / Math.PI + side * 50 + Math.sin(y * 0.3) * 20;
-
-    result.push({
-      key: `leaf-${id++}`,
-      x: x + side * 16,
-      y,
-      rotation: rot,
-      scale: 0.55 + Math.sin(y * 0.2) * 0.2,
-      delay: y * 0.003,
-      variant: 0,
-      color: LEAF_COLORS[Math.floor(y * 0.07) % LEAF_COLORS.length],
-    });
-
-    if (Math.sin(y * 1.3) > 0.3) {
-      result.push({
-        key: `leaf-${id++}`,
-        x: x - side * 12,
-        y: y + 12,
-        rotation: rot + 120,
-        scale: 0.35 + Math.sin(y * 0.4) * 0.12,
-        delay: y * 0.003 + 0.3,
-        variant: 0,
-        color: LEAF_COLORS[(Math.floor(y * 0.07) + 2) % LEAF_COLORS.length],
-      });
-    }
-  }
-  return result;
-}
-
-// ═══════════════════════════════════════════
-// SHIMMER (pulse on current lesson)
-// ═══════════════════════════════════════════
-const Shimmer: React.FC = () => {
-  const anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(anim, { toValue: 1, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(anim, { toValue: 0, duration: 2000, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ]),
-    ).start();
-  }, []);
-
-  return (
-    <Animated.View
-      pointerEvents="none"
-      style={{
-        ...StyleSheet.absoluteFillObject,
-        borderRadius: 20,
-        backgroundColor: 'rgba(194,85,58,0.06)',
+        top: -6,
+        left: -6,
+        width: HEX_SIZE + 12,
+        height: HEX_SIZE + 12,
+        borderRadius: (HEX_SIZE + 12) * 0.32,
+        borderWidth: 2.5,
+        borderColor: color,
         opacity: anim,
       }}
     />
@@ -306,164 +346,254 @@ const Shimmer: React.FC = () => {
 };
 
 // ═══════════════════════════════════════════
-// LESSON NODE
+// HEX ICON NODE
 // ═══════════════════════════════════════════
-interface LessonNodeProps {
+interface HexNodeProps {
   lesson: Lesson;
-  index: number;
+  yPos: number;
   status: 'completed' | 'current' | 'available';
   onPress: (lesson: Lesson) => void;
+  animDelay: number;
 }
 
-const SECTION_ICON: Record<string, (props: { size: number; color: string }) => React.ReactNode> = {
-  raices: (p) => <BookIcon {...p} />,
-  brotes: (p) => <NotesIcon {...p} />,
-  ramas: (p) => <ChatIcon {...p} />,
-  copa: (p) => <GamepadIcon {...p} />,
-};
-
-const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress }) => {
+const HexNode: React.FC<HexNodeProps> = ({ lesson, yPos, status, onPress, animDelay }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const slideAnim = useRef(new Animated.Value(16)).current;
   const scaleAnim = useRef(new Animated.Value(1)).current;
-
-  const yPos = nodeY(index);
-  const xVine = vineX(yPos);
-  const side = index % 2 === 0 ? 1 : -1;
-  const rawLeft = xVine + side * 80 - CARD_W / 2;
-  const nodeLeft = Math.max(CARD_MARGIN, Math.min(rawLeft, SCREEN_W - CARD_W - CARD_MARGIN));
 
   const accent = SECTION_ACCENT[lesson.sectionId] ?? SECTION_ACCENT.raices;
   const isCompleted = status === 'completed';
   const isCurrent = status === 'current';
+  const xPos = vineX(yPos);
 
   useEffect(() => {
-    const timeout = setTimeout(() => {
+    const t = setTimeout(() => {
       Animated.parallel([
-        Animated.timing(fadeAnim, { toValue: 1, duration: 500, easing: Easing.out(Easing.ease), useNativeDriver: true }),
-        Animated.timing(slideAnim, { toValue: 0, duration: 500, easing: Easing.out(Easing.back(1.4)), useNativeDriver: true }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 450, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, damping: 16, stiffness: 130, useNativeDriver: true }),
       ]).start();
-    }, 200 + index * 100);
-    return () => clearTimeout(timeout);
+    }, animDelay);
+    return () => clearTimeout(t);
   }, []);
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, { toValue: 0.94, friction: 8, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, { toValue: 0.93, damping: 12, stiffness: 200, useNativeDriver: true }).start();
   };
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+    Animated.spring(scaleAnim, { toValue: 1, damping: 10, stiffness: 160, useNativeDriver: true }).start();
   };
 
-  const borderColor = isCurrent ? colors.terracotta : isCompleted ? accent.bg : colors.creamDark;
-  const dotColor = isCurrent ? colors.terracotta : isCompleted ? accent.bg : colors.warmGrayLight;
+  const hexBg = isCompleted ? accent.primary : isCurrent ? accent.primary : colors.creamDark;
+  const hexBorderColor = isCompleted ? accent.dark : isCurrent ? accent.primary : colors.warmGrayLight;
+  const iconColor = isCompleted || isCurrent ? colors.white : colors.warmGray;
+  const titleColor = status === 'available' ? colors.warmGray : colors.charcoal;
+  const subtitleColor = status === 'available' ? colors.warmGrayLight : colors.warmGray;
 
   return (
     <Animated.View
       style={{
         position: 'absolute',
-        top: yPos - 40,
-        left: nodeLeft,
+        top: yPos - HEX_SIZE / 2,
+        left: 0,
+        right: 0,
+        flexDirection: 'row',
+        alignItems: 'center',
         opacity: fadeAnim,
-        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
-        zIndex: 10,
+        transform: [{ translateX: slideAnim }, { scale: scaleAnim }],
+        zIndex: isCurrent ? 20 : 10,
       }}
     >
-      {/* Dashed connector */}
-      <View
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: side > 0 ? -42 : undefined,
-          right: side < 0 ? -42 : undefined,
-          width: 36,
-          height: 1,
-          borderStyle: 'dashed',
-          borderBottomWidth: 1.5,
-          borderColor: isCompleted || isCurrent
-            ? accent.bg + '55'
-            : colors.warmGrayLight + '55',
-        }}
-      />
-
-      {/* Connector dot on vine */}
-      <View
-        style={{
-          position: 'absolute',
-          top: '48%',
-          left: side > 0 ? -14 : undefined,
-          right: side < 0 ? -14 : undefined,
-          width: 9,
-          height: 9,
-          borderRadius: 4.5,
-          backgroundColor: dotColor,
-          ...Platform.select({
-            ios: {
-              shadowColor: dotColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: isCurrent ? 0.6 : 0.3,
-              shadowRadius: isCurrent ? 6 : 3,
-            },
-            android: { elevation: 3 },
-          }),
-        }}
-      />
-
-      <TouchableOpacity
-        activeOpacity={0.85}
+      <Pressable
         onPress={() => onPress(lesson)}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={nodeStyles.pressable}
       >
-        <View
-          style={[
-            styles.card,
-            {
-              borderColor,
-              borderWidth: isCurrent ? 2 : 1.5,
-              opacity: status === 'available' ? 0.75 : 1,
-            },
-            Platform.select({
-              ios: {
-                shadowColor: isCurrent ? colors.terracotta : colors.charcoal,
-                shadowOffset: { width: 0, height: 3 },
-                shadowOpacity: isCurrent ? 0.2 : 0.08,
-                shadowRadius: isCurrent ? 10 : 6,
+        {/* Hex icon */}
+        <View style={[nodeStyles.hexOuter, { left: xPos - HEX_SIZE / 2 }]}>
+          {isCurrent && <Shimmer color={accent.primary} />}
+          <View
+            style={[
+              nodeStyles.hex,
+              {
+                backgroundColor: hexBg,
+                borderColor: hexBorderColor,
+                borderWidth: isCurrent ? 2.5 : isCompleted ? 0 : 1.5,
               },
-              android: { elevation: isCurrent ? 8 : 3 },
-            }),
-          ]}
-        >
-          {isCurrent && <Shimmer />}
+              !isCompleted && !isCurrent && { backgroundColor: colors.creamLight },
+              Platform.select({
+                ios: {
+                  shadowColor: isCompleted || isCurrent ? accent.primary : 'transparent',
+                  shadowOffset: { width: 0, height: 3 },
+                  shadowOpacity: isCurrent ? 0.35 : isCompleted ? 0.2 : 0,
+                  shadowRadius: isCurrent ? 10 : 6,
+                },
+                android: { elevation: isCurrent ? 8 : isCompleted ? 4 : 1 },
+              }),
+            ]}
+          >
+            {/* Lesson icon (section-based) */}
+            {(SECTION_ICON[lesson.sectionId] ?? SECTION_ICON.raices)({ size: 22, color: iconColor })}
 
-          <View style={styles.cardRow}>
-            {/* Icon */}
-            <View style={[styles.iconBox, { backgroundColor: accent.iconBg + '20' }]}>
-              {(SECTION_ICON[lesson.sectionId] ?? SECTION_ICON.raices)({ size: 22, color: accent.bg })}
-            </View>
-
-            {/* Text */}
-            <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{lesson.title}</Text>
-              <Text style={styles.cardSubtitle} numberOfLines={1}>{lesson.subtitle}</Text>
-              {isCurrent && (
-                <View style={[styles.continueBadge, { backgroundColor: colors.terracotta + '15' }]}>
-                  <Text style={[styles.continueText, { color: colors.terracotta }]}>CONTINUAR</Text>
-                </View>
-              )}
-            </View>
+            {/* Completed checkmark overlay */}
+            {isCompleted && (
+              <View style={nodeStyles.checkOverlay}>
+                <Text style={nodeStyles.checkText}>✓</Text>
+              </View>
+            )}
           </View>
+        </View>
 
-          {/* Completed checkmark */}
-          {isCompleted && (
-            <View style={[styles.checkBadge, { backgroundColor: colors.marigold }]}>
-              <Text style={styles.checkText}>✓</Text>
+        {/* Text content — always right of the hex area */}
+        <View style={[nodeStyles.textContainer, { marginLeft: xPos + HEX_SIZE / 2 + 16 }]}>
+          <Text style={[nodeStyles.title, { color: titleColor }]} numberOfLines={1}>
+            {lesson.title}
+          </Text>
+          <Text style={[nodeStyles.subtitle, { color: subtitleColor }]} numberOfLines={1}>
+            {lesson.subtitle}
+          </Text>
+          {isCurrent && (
+            <View style={[nodeStyles.continueBadge, { backgroundColor: accent.primary + '15' }]}>
+              <Text style={[nodeStyles.continueText, { color: accent.primary }]}>CONTINUAR</Text>
             </View>
           )}
         </View>
-      </TouchableOpacity>
+      </Pressable>
     </Animated.View>
   );
 };
+
+const nodeStyles = StyleSheet.create({
+  pressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    paddingVertical: 8,
+  },
+  hexOuter: {
+    position: 'absolute',
+    width: HEX_SIZE,
+    height: HEX_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  hex: {
+    width: HEX_SIZE,
+    height: HEX_SIZE,
+    borderRadius: HEX_SIZE * 0.3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    transform: [{ rotate: '0deg' }],
+  },
+  checkOverlay: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: colors.marigold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.cream,
+  },
+  checkText: {
+    fontSize: 10,
+    color: colors.white,
+    fontWeight: '700',
+  },
+  textContainer: {
+    flex: 1,
+    paddingRight: 20,
+  },
+  title: {
+    fontFamily: fonts.semiBold,
+    fontSize: 16,
+    letterSpacing: 0.2,
+  },
+  subtitle: {
+    fontFamily: fonts.regular,
+    fontSize: 12,
+    marginTop: 2,
+  },
+  continueBadge: {
+    marginTop: 6,
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    alignSelf: 'flex-start',
+  },
+  continueText: {
+    fontFamily: fonts.bold,
+    fontSize: 9,
+    letterSpacing: 1,
+  },
+});
+
+// ═══════════════════════════════════════════
+// SECTION HEADER (inline)
+// ═══════════════════════════════════════════
+const SectionHeaderNode: React.FC<{ sectionId: string; title: string; subtitle: string; yPos: number; animDelay: number }> = ({
+  sectionId, title, subtitle, yPos, animDelay,
+}) => {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const accent = SECTION_ACCENT[sectionId] ?? SECTION_ACCENT.raices;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.timing(fadeAnim, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+    }, animDelay);
+    return () => clearTimeout(t);
+  }, []);
+
+  const xPos = vineX(yPos + 20);
+
+  return (
+    <Animated.View
+      style={{
+        position: 'absolute',
+        top: yPos - 10,
+        left: xPos + HEX_SIZE / 2 + 16,
+        right: 20,
+        opacity: fadeAnim,
+        zIndex: 5,
+      }}
+      pointerEvents="none"
+    >
+      {/* Thin accent line */}
+      <View style={[secHeaderStyles.accentBar, { backgroundColor: accent.primary }]} />
+      <View style={secHeaderStyles.row}>
+        <Text style={[secHeaderStyles.title, { color: accent.primary }]}>{title}</Text>
+        <Text style={secHeaderStyles.subtitle}>{subtitle}</Text>
+      </View>
+    </Animated.View>
+  );
+};
+
+const secHeaderStyles = StyleSheet.create({
+  accentBar: {
+    width: 24,
+    height: 2.5,
+    borderRadius: 2,
+    marginBottom: 6,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: 8,
+  },
+  title: {
+    fontFamily: fonts.serif,
+    fontSize: 22,
+  },
+  subtitle: {
+    fontFamily: fonts.light,
+    fontSize: 13,
+    color: colors.warmGray,
+    letterSpacing: 0.5,
+  },
+});
 
 // ═══════════════════════════════════════════
 // PROGRESS BAR
@@ -507,8 +637,9 @@ export default function LessonsScreen() {
   const sheetAnim = useRef(new Animated.Value(SCREEN_H)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
 
-  const containerHeight = lessons.length * NODE_SPACING + TOP_PADDING + 200;
+  const { items: nodeItems, totalHeight: containerHeight } = useMemo(() => buildNodeList(), []);
   const leafData = useMemo(() => generateLeaves(containerHeight), [containerHeight]);
+  const dotData = useMemo(() => generateVineDots(containerHeight), [containerHeight]);
 
   const completedCount = progress.completedLessons.length;
   const progressPct = completedCount / lessons.length;
@@ -526,9 +657,13 @@ export default function LessonsScreen() {
           ? lessons.findIndex((l) => l.id === p.lastViewedLessonId)
           : lessons.findIndex((l) => !p.completedLessons.includes(l.id));
         if (target > 0 && scrollRef.current) {
-          setTimeout(() => {
-            scrollRef.current?.scrollTo({ y: nodeY(target) - SCREEN_H * 0.35, animated: true });
-          }, 500);
+          // find the y position from our items list
+          const lessonItem = nodeItems.find((item) => item.type === 'lesson' && item.index === target);
+          if (lessonItem) {
+            setTimeout(() => {
+              scrollRef.current?.scrollTo({ y: lessonItem.y - SCREEN_H * 0.35, animated: true });
+            }, 500);
+          }
         }
       });
       dismissSheet();
@@ -564,6 +699,8 @@ export default function LessonsScreen() {
     ? sections.find((s) => s.id === selectedLesson.sectionId)
     : null;
 
+  let animIdx = 0;
+
   return (
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {/* Scrollable vine area */}
@@ -577,30 +714,45 @@ export default function LessonsScreen() {
         {/* Vine SVG */}
         <VinePath containerHeight={containerHeight} />
 
-        {/* Animated decorative leaves */}
-        {leafData.map(({ key, ...leafProps }) => (
-          <AnimatedLeaf key={key} {...leafProps} />
+        {/* Green dots along the vine */}
+        {dotData.map((dot) => (
+          <VineDot key={dot.key} {...dot} />
         ))}
 
-        {/* Warm particles */}
-        {Array.from({ length: 6 }).map((_, i) => (
-          <WarmParticle key={`particle-${i}`} delay={i} maxY={containerHeight} />
+        {/* Lush decorative leaves */}
+        {leafData.map(({ key, ...lp }) => (
+          <AnimatedLeaf key={key} {...lp} />
         ))}
 
-        {/* Lesson nodes */}
-        {lessons.map((lesson, i) => (
-          <LessonNode
-            key={lesson.id}
-            lesson={lesson}
-            index={i}
-            status={getStatus(lesson)}
-            onPress={showSheet}
-          />
-        ))}
+        {/* Render nodes */}
+        {nodeItems.map((item, i) => {
+          if (item.type === 'section') {
+            return (
+              <SectionHeaderNode
+                key={`sec-${item.sectionId}`}
+                sectionId={item.sectionId}
+                title={item.title}
+                subtitle={item.subtitle}
+                yPos={item.y}
+                animDelay={200 + animIdx++ * 60}
+              />
+            );
+          }
+          return (
+            <HexNode
+              key={item.lesson.id}
+              lesson={item.lesson}
+              yPos={item.y}
+              status={getStatus(item.lesson)}
+              onPress={showSheet}
+              animDelay={200 + animIdx++ * 60}
+            />
+          );
+        })}
 
         {/* Bottom message */}
         <View style={[styles.bottomMsg, { top: containerHeight - 80 }]}>
-          <Text style={styles.bottomMsgText}>Más lecciones pronto...</Text>
+          <Text style={styles.bottomMsgText}>Mas lecciones pronto...</Text>
         </View>
       </ScrollView>
 
@@ -621,7 +773,7 @@ export default function LessonsScreen() {
 
           <ProgressBar progress={progressPct} />
           <Text style={styles.progressLabel}>
-            {completedCount} of {lessons.length} lessons complete
+            {completedCount} of {lessons.length} complete
           </Text>
         </View>
       </LinearGradient>
@@ -644,19 +796,19 @@ export default function LessonsScreen() {
         pointerEvents={selectedLesson ? 'auto' : 'none'}
       >
         <View style={styles.sheetHandle} />
-        <View style={[styles.sheetAccent, { backgroundColor: selectedAccent.bg }]} />
+        <View style={[styles.sheetAccent, { backgroundColor: selectedAccent.primary }]} />
 
         {selectedLesson && (
           <>
             <View style={styles.sheetHeader}>
-              <View style={[styles.sheetIconBox, { backgroundColor: selectedAccent.iconBg + '20' }]}>
-                {(SECTION_ICON[selectedLesson.sectionId] ?? SECTION_ICON.raices)({ size: 26, color: selectedAccent.bg })}
+              <View style={[styles.sheetHex, { backgroundColor: selectedAccent.primary }]}>
+                {(SECTION_ICON[selectedLesson.sectionId] ?? SECTION_ICON.raices)({ size: 26, color: colors.white })}
               </View>
               <View style={{ flex: 1 }}>
                 {selectedSection && (
-                  <View style={[styles.sheetBadge, { backgroundColor: selectedAccent.bg + '18' }]}>
-                    <Text style={[styles.sheetBadgeText, { color: selectedAccent.bg }]}>
-                      {selectedSection.title}
+                  <View style={[styles.sheetBadge, { backgroundColor: selectedAccent.primary + '18' }]}>
+                    <Text style={[styles.sheetBadgeText, { color: selectedAccent.primary }]}>
+                      {selectedSection.title} — {selectedSection.subtitle}
                     </Text>
                   </View>
                 )}
@@ -666,7 +818,11 @@ export default function LessonsScreen() {
             </View>
 
             <Pressable
-              style={[styles.startBtn, { backgroundColor: selectedAccent.bg }]}
+              style={({ pressed }) => [
+                styles.startBtn,
+                { backgroundColor: selectedAccent.primary },
+                pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
+              ]}
               onPress={() => {
                 dismissSheet();
                 navigation.navigate('LessonDetail', { lessonId: selectedLesson.id });
@@ -759,71 +915,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
 
-  // ── Card ──
-  card: {
-    backgroundColor: colors.white,
-    borderRadius: 20,
-    padding: 14,
-    paddingHorizontal: 16,
-    width: CARD_W,
-    overflow: 'hidden',
-  },
-  cardRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  iconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  cardTextWrap: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    color: colors.charcoal,
-  },
-  cardSubtitle: {
-    fontFamily: fonts.regular,
-    fontSize: 11,
-    color: colors.warmGray,
-    marginTop: 1,
-  },
-  continueBadge: {
-    marginTop: 5,
-    borderRadius: 6,
-    paddingVertical: 2,
-    paddingHorizontal: 8,
-    alignSelf: 'flex-start',
-  },
-  continueText: {
-    fontFamily: fonts.bold,
-    fontSize: 9,
-    letterSpacing: 0.8,
-  },
-  checkBadge: {
-    position: 'absolute',
-    top: -5,
-    right: -5,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.white,
-  },
-  checkText: {
-    fontSize: 11,
-    color: colors.white,
-    fontWeight: '700',
-  },
-
   // ── Bottom ──
   bottomMsg: {
     position: 'absolute',
@@ -887,10 +978,10 @@ const styles = StyleSheet.create({
     gap: 14,
     marginBottom: spacing.lg,
   },
-  sheetIconBox: {
+  sheetHex: {
     width: 52,
     height: 52,
-    borderRadius: 16,
+    borderRadius: 52 * 0.3,
     alignItems: 'center',
     justifyContent: 'center',
   },
