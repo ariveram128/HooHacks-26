@@ -18,7 +18,6 @@ import BottomNav from '../components/BottomNav';
 import {
   BookIcon,
   MicIcon,
-  NotesIcon,
   UsersIcon,
   ForumIcon,
   VideoIcon,
@@ -58,13 +57,6 @@ const quickActions: QuickAction[] = [
     icon: <MicIcon size={22} color={colors.white} />,
     iconBg: colors.terracotta,
     accentColor: colors.terracotta,
-  },
-  {
-    title: 'My Notes',
-    desc: 'Saved explanations & tips',
-    icon: <NotesIcon size={22} color={colors.white} />,
-    iconBg: colors.marigold,
-    accentColor: colors.marigold,
   },
   {
     title: 'Social',
@@ -237,6 +229,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => {
                   if (action.title === 'Lessons') navigation.navigate('Lessons');
+                  else if (action.title === 'Practice') navigation.navigate('DillowChat');
                 }}
               >
                 <View style={[styles.quickIcon, { backgroundColor: action.iconBg }]}>
@@ -286,7 +279,7 @@ export default function HomeScreen() {
       <BottomNav
         activeTab={activeNav}
         onTabPress={(tabId) => {
-          if (tabId === 'chat') {
+          if (tabId === 'chat' || tabId === 'practice') {
             navigation.navigate('DillowChat');
           } else if (tabId === 'learn') {
             navigation.navigate('Lessons');

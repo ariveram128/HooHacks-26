@@ -26,11 +26,13 @@ import { colors, fonts, spacing, radii } from '../theme';
 import { lessons, sections, Lesson } from '../data/lessons';
 import { getProgress, LessonProgress } from '../store/lessonProgress';
 import BottomNav from '../components/BottomNav';
-import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon } from '../components/Icons';
+import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon, MicIcon, UsersIcon, PlayIcon, CheckCircleIcon } from '../components/Icons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
+const { width: _dimW, height: _dimH } = Dimensions.get('window');
+const SCREEN_W = _dimW || (typeof window !== 'undefined' ? window.innerWidth : 375);
+const SCREEN_H = _dimH || (typeof window !== 'undefined' ? window.innerHeight : 812);
 
 // ═══════════════════════════════════════════
 // VINE MATH
@@ -322,6 +324,33 @@ const SECTION_ICON: Record<string, (props: { size: number; color: string }) => R
   copa: (p) => <GamepadIcon {...p} />,
 };
 
+const ICON: Record<string, (props: { size: number; color: string }) => React.ReactNode> = {
+  // Raíces
+  alfabeto: (p) => <BookIcon {...p} />,
+  numeros: (p) => <GamepadIcon {...p} />,
+  pronunciacion: (p) => <MicIcon {...p} />,
+  saludos: (p) => <ChatIcon {...p} />,
+  presentaciones: (p) => <UsersIcon {...p} />,
+  // Brotes
+  articulos: (p) => <NotesIcon {...p} />,
+  sustantivos: (p) => <BookIcon {...p} />,
+  pronombres: (p) => <UsersIcon {...p} />,
+  'ser-estar': (p) => <CheckCircleIcon {...p} />,
+  'presente-regular': (p) => <PlayIcon {...p} />,
+  // Ramas
+  'presente-irregular': (p) => <GamepadIcon {...p} />,
+  preguntas: (p) => <ChatIcon {...p} />,
+  adjetivos: (p) => <NotesIcon {...p} />,
+  preterito: (p) => <BookIcon {...p} />,
+  imperfecto: (p) => <BookIcon {...p} />,
+  // Copa
+  futuro: (p) => <PlayIcon {...p} />,
+  subjuntivo: (p) => <ChatIcon {...p} />,
+  condicional: (p) => <GamepadIcon {...p} />,
+  'por-para': (p) => <CheckCircleIcon {...p} />,
+  expresiones: (p) => <MicIcon {...p} />,
+};
+
 const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -438,7 +467,7 @@ const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress 
           <View style={styles.cardRow}>
             {/* Icon */}
             <View style={[styles.iconBox, { backgroundColor: accent.iconBg + '20' }]}>
-              {(SECTION_ICON[lesson.sectionId] ?? SECTION_ICON.raices)({ size: 22, color: accent.bg })}
+              {(ICON[lesson.id] ?? SECTION_ICON.raices)({ size: 22, color: accent.bg })}
             </View>
 
             {/* Text */}
@@ -447,7 +476,7 @@ const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress 
               <Text style={styles.cardSubtitle} numberOfLines={1}>{lesson.subtitle}</Text>
               {isCurrent && (
                 <View style={[styles.continueBadge, { backgroundColor: colors.terracotta + '15' }]}>
-                  <Text style={[styles.continueText, { color: colors.terracotta }]}>CONTINUAR</Text>
+                  <Text style={[styles.continueText, { color: colors.terracotta }]}>NEXT LESSON</Text>
                 </View>
               )}
             </View>
@@ -650,7 +679,7 @@ export default function LessonsScreen() {
           <>
             <View style={styles.sheetHeader}>
               <View style={[styles.sheetIconBox, { backgroundColor: selectedAccent.iconBg + '20' }]}>
-                {(SECTION_ICON[selectedLesson.sectionId] ?? SECTION_ICON.raices)({ size: 26, color: selectedAccent.bg })}
+                {(ICON[selectedLesson.id] ?? SECTION_ICON.raices)({ size: 26, color: selectedAccent.bg })}
               </View>
               <View style={{ flex: 1 }}>
                 {selectedSection && (
@@ -684,7 +713,7 @@ export default function LessonsScreen() {
           activeTab="learn"
           onTabPress={(tabId) => {
             if (tabId === 'home') navigation.navigate('Home');
-            else if (tabId === 'chat') navigation.navigate('DillowChat');
+            else if (tabId === 'chat' || tabId === 'practice') navigation.navigate('DillowChat');
           }}
         />
       </View>
