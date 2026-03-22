@@ -18,6 +18,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
 import { MicIcon, GamepadIcon, ChevronRightIcon, CloseIcon } from '../components/Icons';
+import MiniOrb from '../components/MiniOrb';
 import BottomNav from '../components/BottomNav';
 import { getProgress, PracticeProgress } from '../store/practiceProgress';
 import { phrases } from '../data/phrases';
@@ -1151,7 +1152,7 @@ export default function PracticeScreen() {
             >
               <DotsPattern />
               <View style={styles.dillowCtaInner}>
-                <Text style={styles.dillowCtaEmoji}>🦜</Text>
+                <MiniOrb size={32} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.dillowCtaTitle}>Practice with Dillow</Text>
                   <Text style={styles.dillowCtaDesc}>Free conversation to sharpen your skills</Text>
