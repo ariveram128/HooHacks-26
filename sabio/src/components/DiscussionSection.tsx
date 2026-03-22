@@ -15,6 +15,7 @@ import {
   postDiscussion,
   deleteDiscussion,
   upvoteDiscussion,
+  fetchUpvotedIdsForUser,
 } from '../lib/discussions';
 import { TrashIcon, ChevronRightIcon } from './Icons';
 
@@ -69,11 +70,15 @@ export default function DiscussionSection({ contentType, contentId }: Props) {
   const [replyingToId, setReplyingToId] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [replyPosting, setReplyPosting] = useState(false);
+  const [upvotedIds, setUpvotedIds] = useState<Set<string>>(() => new Set());
 
   const load = useCallback(async () => {
     setLoading(true);
     const data = await fetchDiscussions(contentType, contentId);
     setComments(data);
+    const ids = data.map((c) => c.id);
+    const voted = await fetchUpvotedIdsForUser(ids);
+    setUpvotedIds(voted);
     setLoading(false);
   }, [contentType, contentId]);
 
@@ -122,11 +127,15 @@ export default function DiscussionSection({ contentType, contentId }: Props) {
   };
 
   const handleUpvote = async (id: string) => {
-    const ok = await upvoteDiscussion(id);
-    if (ok) {
+    if (upvotedIds.has(id)) return;
+    const result = await upvoteDiscussion(id);
+    if (result === 'ok') {
+      setUpvotedIds((prev) => new Set(prev).add(id));
       setComments((prev) =>
         prev.map((c) => (c.id === id ? { ...c, upvotes: c.upvotes + 1 } : c)),
       );
+    } else if (result === 'already') {
+      setUpvotedIds((prev) => new Set(prev).add(id));
     }
   };
 
@@ -134,6 +143,7 @@ export default function DiscussionSection({ contentType, contentId }: Props) {
     const isAuthor = user?.id === item.user_id;
     const replies = repliesMap.get(item.id) ?? [];
     const isReplying = replyingToId === item.id;
+    const hasUpvoted = upvotedIds.has(item.id);
 
     return (
       <View key={item.id} style={[styles.threadWrap, depth > 0 && styles.threadIndent]}>
@@ -156,9 +166,15 @@ export default function DiscussionSection({ contentType, contentId }: Props) {
           </View>
           <Text style={styles.commentBody}>{item.body}</Text>
           <View style={styles.commentActions}>
-            <Pressable onPress={() => handleUpvote(item.id)} style={styles.upvoteBtn}>
-              <Text style={styles.upvoteArrow}>▲</Text>
-              <Text style={styles.upvoteCount}>{item.upvotes}</Text>
+            <Pressable
+              onPress={() => handleUpvote(item.id)}
+              disabled={hasUpvoted}
+              style={[styles.upvoteBtn, hasUpvoted && styles.upvoteBtnDone]}
+            >
+              <Text style={[styles.upvoteArrow, hasUpvoted && styles.upvoteArrowDone]}>▲</Text>
+              <Text style={[styles.upvoteCount, hasUpvoted && styles.upvoteCountDone]}>
+                {item.upvotes}
+              </Text>
             </Pressable>
             <Pressable
               onPress={() => {
@@ -382,6 +398,16 @@ const styles = StyleSheet.create({
     fontFamily: fonts.medium,
     fontSize: 12,
     color: colors.teal,
+  },
+  upvoteBtnDone: {
+    opacity: 0.55,
+    backgroundColor: colors.creamDark,
+  },
+  upvoteArrowDone: {
+    color: colors.warmGray,
+  },
+  upvoteCountDone: {
+    color: colors.warmGray,
   },
   replyLink: {
     paddingVertical: 4,

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,12 +6,14 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
+  Animated,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle as SvgCircle, Line } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import FadeIn from '../components/FadeIn';
 import DillowAvatar from '../components/DillowAvatar';
 import StreakBadge from '../components/StreakBadge';
 import BottomNav from '../components/BottomNav';
@@ -19,284 +21,455 @@ import {
   BookIcon,
   MicIcon,
   NotesIcon,
-  UsersIcon,
+  GamepadIcon,
   ChevronRightIcon,
 } from '../components/Icons';
 import { colors, fonts, radii } from '../theme';
 import type { RootStackParamList } from '../navigation';
 import { useAuth } from '../context/AuthContext';
+import { getProgress as getLessonProgress, LessonProgress } from '../store/lessonProgress';
+import { getProgress as getPracticeProgress, PracticeProgress } from '../store/practiceProgress';
+import { lessons, sections } from '../data/lessons';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_W } = Dimensions.get('window');
+const HERO_CARD_W = SCREEN_W * 0.78;
+const SMALL_CARD_W = SCREEN_W * 0.42;
 
-const phrases = [
+type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+/* ══════════════════════════════════════ */
+/* ── SVG Patterns ───────────────────── */
+/* ══════════════════════════════════════ */
+
+const WavePattern = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 400 400" style={StyleSheet.absoluteFill} preserveAspectRatio="xMidYMid slice">
+    <Path d="M-40 220 Q100 160 200 210 T440 180" stroke="rgba(255,255,255,0.10)" strokeWidth={60} fill="none" />
+    <Path d="M-40 300 Q120 260 240 290 T480 260" stroke="rgba(255,255,255,0.06)" strokeWidth={35} fill="none" />
+  </Svg>
+);
+
+const CirclesPattern = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 400 300" style={StyleSheet.absoluteFill} preserveAspectRatio="xMidYMid slice">
+    <SvgCircle cx={320} cy={60} r={80} fill="rgba(255,255,255,0.07)" />
+    <SvgCircle cx={340} cy={80} r={45} fill="rgba(255,255,255,0.05)" />
+    <SvgCircle cx={50} cy={240} r={55} fill="rgba(255,255,255,0.04)" />
+  </Svg>
+);
+
+const DotsPattern = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 200 200" style={StyleSheet.absoluteFill} preserveAspectRatio="xMidYMid slice">
+    {[30, 70, 110, 150].map((x) =>
+      [30, 70, 110, 150].map((y) => (
+        <SvgCircle key={`${x}-${y}`} cx={x} cy={y} r={3} fill="rgba(255,255,255,0.08)" />
+      )),
+    )}
+  </Svg>
+);
+
+const DiagonalPattern = () => (
+  <Svg width="100%" height="100%" viewBox="0 0 200 200" style={StyleSheet.absoluteFill} preserveAspectRatio="xMidYMid slice">
+    {[0, 30, 60, 90, 120, 150, 180].map((x) => (
+      <Line key={x} x1={x} y1={0} x2={x - 60} y2={200} stroke="rgba(255,255,255,0.04)" strokeWidth={12} />
+    ))}
+  </Svg>
+);
+
+/* ══════════════════════════════════════ */
+/* ── Stagger animation ──────────────── */
+/* ══════════════════════════════════════ */
+
+function StaggerIn({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: any }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(24)).current;
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(opacity, { toValue: 1, duration: 500, useNativeDriver: true }),
+        Animated.spring(translateY, { toValue: 0, damping: 18, stiffness: 130, useNativeDriver: true }),
+      ]).start();
+    }, delay);
+    return () => clearTimeout(t);
+  }, [delay]);
+
+  return (
+    <Animated.View style={[{ opacity, transform: [{ translateY }] }, style]}>
+      {children}
+    </Animated.View>
+  );
+}
+
+/* ══════════════════════════════════════ */
+/* ── Section header ─────────────────── */
+/* ══════════════════════════════════════ */
+
+function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
+  return (
+    <View style={sectionStyles.row}>
+      <Text style={sectionStyles.title}>{title}</Text>
+      {actionLabel && onAction && (
+        <Pressable onPress={onAction} hitSlop={8} style={sectionStyles.actionBtn}>
+          <Text style={sectionStyles.actionText}>{actionLabel}</Text>
+          <ChevronRightIcon size={12} color={colors.teal} />
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+const sectionStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginBottom: 14,
+  },
+  title: {
+    fontFamily: fonts.semiBold,
+    fontSize: 12,
+    color: colors.warmGray,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
+  },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  actionText: {
+    fontFamily: fonts.medium,
+    fontSize: 12,
+    color: colors.teal,
+  },
+});
+
+/* ══════════════════════════════════════ */
+/* ── Phrase data ────────────────────── */
+/* ══════════════════════════════════════ */
+
+const dailyPhrases = [
   { es: '¿De dónde eres?', en: 'Where are you from?', level: 'Essentials' },
   { es: 'Estoy de acuerdo', en: 'I agree', level: 'Conversational' },
   { es: '¿Qué tal tu día?', en: "How's your day?", level: 'Essentials' },
   { es: 'Me gustaría saber más', en: "I'd like to know more", level: 'Intermediate' },
 ];
 
-type QuickAction = {
-  title: string;
-  desc: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  accentColor: string;
-};
-
-const quickActions: QuickAction[] = [
-  {
-    title: 'Lessons',
-    desc: 'Conjugations, accents & rules',
-    icon: <BookIcon size={22} color={colors.white} />,
-    iconBg: colors.teal,
-    accentColor: colors.teal,
-  },
-  {
-    title: 'Practice',
-    desc: 'Key phrases & pronunciation',
-    icon: <MicIcon size={22} color={colors.white} />,
-    iconBg: colors.terracotta,
-    accentColor: colors.terracotta,
-  },
-  {
-    title: 'My Notes',
-    desc: 'Saved explanations & tips',
-    icon: <NotesIcon size={22} color={colors.white} />,
-    iconBg: colors.marigold,
-    accentColor: colors.marigold,
-  },
-  {
-    title: 'Account',
-    desc: 'Profile & settings',
-    icon: <UsersIcon size={22} color={colors.white} />,
-    iconBg: colors.charcoal,
-    accentColor: colors.charcoal,
-  },
-];
+/* ══════════════════════════════════════ */
+/* ── MAIN SCREEN ────────────────────── */
+/* ══════════════════════════════════════ */
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const navigation = useNavigation<Nav>();
   const { user } = useAuth();
-  const [activeNav, setActiveNav] = useState('home');
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
+  const [lessonProg, setLessonProg] = useState<LessonProgress>({ completedLessons: [], lastViewedLessonId: null });
+  const [practiceProg, setPracticeProg] = useState<PracticeProgress>({ masteredPhrases: [], currentStreak: 0, bestStreak: 0, colorGameHighScore: 0 });
+
+  useFocusEffect(
+    useCallback(() => {
+      getLessonProgress().then(setLessonProg);
+      getPracticeProgress().then(setPracticeProg);
+    }, []),
+  );
 
   const userName = user?.user_metadata?.name || 'Welcome back';
-  const currentPhrase = phrases[phraseIndex];
+  const currentPhrase = dailyPhrases[phraseIndex];
+  const completedLessons = lessonProg.completedLessons.length;
+  const nextLessonIdx = lessons.findIndex((l) => !lessonProg.completedLessons.includes(l.id));
+  const nextLesson = nextLessonIdx >= 0 ? lessons[nextLessonIdx] : null;
+  const nextLessonSection = nextLesson ? sections.find((s) => s.id === nextLesson.sectionId) : null;
+
+  const greeting = new Date().getHours() < 12
+    ? 'Buenos días'
+    : new Date().getHours() < 19
+      ? 'Buenas tardes'
+      : 'Buenas noches';
 
   return (
     <View style={styles.root}>
       <ScrollView
-        style={styles.scroll}
-        contentContainerStyle={[
-          styles.scrollContent,
-          { paddingTop: insets.top + 12, paddingBottom: 100 },
-        ]}
+        style={{ flex: 1 }}
+        contentContainerStyle={{ paddingTop: insets.top + 8, paddingBottom: 110 }}
         showsVerticalScrollIndicator={false}
       >
-        {/* ─── Header ─── */}
-        <FadeIn delay={100}>
+        {/* ── Top bar ── */}
+        <StaggerIn delay={0} style={{ paddingHorizontal: 20 }}>
           <View style={styles.topBar}>
             <Text style={styles.logo}>
               Sabio<Text style={styles.logoDot}>.</Text>
             </Text>
             <StreakBadge days={12} />
           </View>
+        </StaggerIn>
 
-          <View style={styles.greetingSection}>
-            <Text style={styles.greetingHello}>
-              {new Date().getHours() < 12
-                ? 'Buenos días,'
-                : new Date().getHours() < 19
-                  ? 'Buenas tardes,'
-                  : 'Buenas noches,'}
-            </Text>
-            <Text style={styles.greetingName}>{userName}</Text>
-            <Text style={styles.greetingSub}>
-              You're 34% through this week's goals
-            </Text>
-          </View>
-        </FadeIn>
+        {/* ── Greeting ── */}
+        <StaggerIn delay={60} style={{ paddingHorizontal: 20, marginBottom: 24 }}>
+          <Text style={styles.greetingSub}>{greeting},</Text>
+          <Text style={styles.greetingName}>{userName}</Text>
+        </StaggerIn>
 
-        {/* ─── Weekly Progress ─── */}
-        <FadeIn delay={200}>
-          <View style={styles.progressSection}>
-            <View style={styles.progressBarBg}>
-              <View style={[styles.progressBarFill, { width: '34%' }]} />
-            </View>
-            <View style={styles.progressStats}>
-              <Text style={styles.progressStat}>
-                <Text style={styles.progressStatBold}>3</Text> lessons
-              </Text>
-              <Text style={styles.progressStat}>
-                <Text style={styles.progressStatBold}>47</Text> words learned
-              </Text>
-              <Text style={styles.progressStat}>
-                <Text style={styles.progressStatBold}>12</Text> min today
-              </Text>
-            </View>
-          </View>
-        </FadeIn>
-
-        {/* ─── Dillow AI Chat Card ─── */}
-        <FadeIn delay={350}>
-          <Pressable
-            onPress={() => navigation.navigate('DillowChat')}
-            style={({ pressed }) => [
-              styles.dillowPressable,
-              pressed && styles.dillowPressed,
-            ]}
+        {/* ── Today's Session — hero cards ── */}
+        <StaggerIn delay={140}>
+          <SectionHeader title="Today's Session" />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+            decelerationRate="fast"
+            snapToInterval={HERO_CARD_W + 14}
           >
-            <LinearGradient
-              colors={[colors.tealDark, colors.teal]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.dillowCard}
+            {/* Dillow conversation card */}
+            <Pressable
+              onPress={() => navigation.navigate('DillowChat')}
+              style={({ pressed }) => [styles.heroCard, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
             >
-              {/* Decorative glow */}
-              <View style={styles.dillowGlow} />
-
-              <View style={styles.dillowTop}>
-                <DillowAvatar size={56} />
-                <View style={styles.dillowInfo}>
-                  <Text style={styles.dillowTitle}>Chat with Dillow</Text>
-                  <Text style={styles.dillowSubtitle}>
-                    Your AI Spanish companion
-                  </Text>
+              <LinearGradient
+                colors={[colors.tealDark, colors.teal]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.heroGradient}
+              >
+                <WavePattern />
+                <View style={styles.heroInner}>
+                  <View style={styles.heroTopRow}>
+                    <DillowAvatar size={48} />
+                    <View style={styles.heroBadge}>
+                      <Text style={styles.heroBadgeText}>AI TUTOR</Text>
+                    </View>
+                  </View>
+                  <View style={{ flex: 1 }} />
+                  <Text style={styles.heroTitle}>Talk with Dillow</Text>
+                  <Text style={styles.heroSubtitle}>Personalized conversation practice</Text>
+                  <View style={styles.heroBtn}>
+                    <Text style={styles.heroBtnText}>Start</Text>
+                  </View>
                 </View>
-              </View>
+              </LinearGradient>
+            </Pressable>
 
-              <View style={styles.dillowBubble}>
-                <Text style={styles.dillowBubbleText}>
-                  ¡Hola!{' '}
-                  <Text style={styles.dillowBubbleEmphasis}>
-                    ¿Cómo estuvo tu día?
-                  </Text>{' '}
-                  Tell me about it — in Spanish or English, your choice. I'll
-                  help along the way.
-                </Text>
-              </View>
+            {/* Continue lesson card */}
+            {nextLesson && (
+              <Pressable
+                onPress={() => navigation.navigate('Lessons')}
+                style={({ pressed }) => [styles.heroCard, pressed && { opacity: 0.9, transform: [{ scale: 0.97 }] }]}
+              >
+                <LinearGradient
+                  colors={[colors.terracotta, colors.terracottaDark]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.heroGradient}
+                >
+                  <CirclesPattern />
+                  <View style={styles.heroInner}>
+                    <View style={styles.heroTopRow}>
+                      <View style={styles.heroIconWrap}>
+                        <BookIcon size={22} color={colors.white} />
+                      </View>
+                      <View style={styles.heroBadge}>
+                        <Text style={styles.heroBadgeText}>{nextLessonSection?.title ?? 'LESSON'}</Text>
+                      </View>
+                    </View>
+                    <View style={{ flex: 1 }} />
+                    <Text style={styles.heroTitle}>{nextLesson.title}</Text>
+                    <Text style={styles.heroSubtitle}>{nextLesson.subtitle}</Text>
+                    <View style={styles.heroBtn}>
+                      <Text style={styles.heroBtnText}>Continue</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </Pressable>
+            )}
+          </ScrollView>
+        </StaggerIn>
 
-              <View style={styles.dillowCta}>
-                <Text style={styles.dillowCtaText}>Start a conversation</Text>
-                <ChevronRightIcon size={18} color={colors.marigoldLight} />
-              </View>
-            </LinearGradient>
-          </Pressable>
-        </FadeIn>
-
-        {/* ─── Phrase of the Day ─── */}
-        <FadeIn delay={450}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Frase del día</Text>
+        {/* ── Stats bar ── */}
+        <StaggerIn delay={240} style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 6 }}>
+          <View style={styles.statsBar}>
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{completedLessons}</Text>
+              <Text style={styles.statLabel}>Lessons</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{practiceProg.masteredPhrases.length}</Text>
+              <Text style={styles.statLabel}>Phrases</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{practiceProg.bestStreak}</Text>
+              <Text style={styles.statLabel}>Best streak</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <Text style={styles.statValue}>{practiceProg.colorGameHighScore}</Text>
+              <Text style={styles.statLabel}>High score</Text>
+            </View>
           </View>
+        </StaggerIn>
 
+        {/* ── Phrase of the Day ── */}
+        <StaggerIn delay={340} style={{ marginTop: 24 }}>
+          <SectionHeader title="Frase del Día" />
           <Pressable
             onPress={() => setShowTranslation(!showTranslation)}
-            style={({ pressed }) => [
-              styles.phraseCard,
-              pressed && styles.phraseCardPressed,
-            ]}
+            style={({ pressed }) => [styles.phraseCard, pressed && { borderColor: colors.marigold }]}
           >
-            <View style={styles.phraseLabel}>
-              <Text style={styles.phraseLabelText}>{currentPhrase.level}</Text>
+            <View style={styles.phraseTop}>
+              <View style={styles.phraseLevelBadge}>
+                <Text style={styles.phraseLevelText}>{currentPhrase.level}</Text>
+              </View>
             </View>
             <Text style={styles.phraseSpanish}>{currentPhrase.es}</Text>
-
             {showTranslation ? (
               <Text style={styles.phraseEnglish}>{currentPhrase.en}</Text>
             ) : (
-              <Text style={styles.phraseTap}>Tap to reveal translation</Text>
+              <Text style={styles.phraseTap}>Tap to reveal</Text>
             )}
-
-            <View style={styles.phraseNav}>
-              {phrases.map((_, i) => (
+            <View style={styles.phraseDots}>
+              {dailyPhrases.map((_, i) => (
                 <Pressable
                   key={i}
-                  onPress={() => {
-                    setPhraseIndex(i);
-                    setShowTranslation(false);
-                  }}
-                  style={[
-                    styles.phraseDot,
-                    i === phraseIndex && styles.phraseDotActive,
-                  ]}
+                  onPress={() => { setPhraseIndex(i); setShowTranslation(false); }}
+                  style={[styles.phraseDot, i === phraseIndex && styles.phraseDotActive]}
                 />
               ))}
             </View>
           </Pressable>
-        </FadeIn>
+        </StaggerIn>
 
-        {/* ─── Quick Actions Grid ─── */}
-        <FadeIn delay={550}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Your toolkit</Text>
-          </View>
-
-          <View style={styles.quickGrid}>
-            {quickActions.map((action) => (
-              <Pressable
-                key={action.title}
-                style={({ pressed }) => [
-                  styles.quickCard,
-                  pressed && styles.quickCardPressed,
-                ]}
-                onPress={() => {
-                  if (action.title === 'Lessons') navigation.navigate('Lessons');
-                  else if (action.title === 'Practice') navigation.navigate('Practice');
-                  else if (action.title === 'Account') navigation.navigate('Account');
-                }}
-              >
-                <View style={[styles.quickIcon, { backgroundColor: action.iconBg }]}>
-                  {action.icon}
+        {/* ── Quick Practice ── */}
+        <StaggerIn delay={440} style={{ marginTop: 24 }}>
+          <SectionHeader title="Quick Practice" actionLabel="See all" onAction={() => navigation.navigate('Practice')} />
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 20 }}
+          >
+            {/* Phrase practice */}
+            <Pressable
+              onPress={() => navigation.navigate('PhrasePractice')}
+              style={({ pressed }) => [styles.smallCard, pressed && { opacity: 0.9, transform: [{ scale: 0.96 }] }]}
+            >
+              <LinearGradient colors={[colors.teal, colors.tealDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.smallGradient}>
+                <WavePattern />
+                <View style={styles.smallInner}>
+                  <View style={styles.smallTagWrap}>
+                    <Text style={styles.smallTag}>PRONUNCIATION</Text>
+                  </View>
+                  <View style={{ flex: 1 }} />
+                  <View style={styles.smallIconWrap}>
+                    <MicIcon size={20} color={colors.white} />
+                  </View>
+                  <Text style={styles.smallTitle}>Frases</Text>
+                  <Text style={styles.smallSub}>Speak & get feedback</Text>
                 </View>
-                <Text style={styles.quickCardTitle}>{action.title}</Text>
-                <Text style={styles.quickCardDesc}>{action.desc}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </FadeIn>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Color game */}
+            <Pressable
+              onPress={() => navigation.navigate('ColorGame')}
+              style={({ pressed }) => [styles.smallCard, pressed && { opacity: 0.9, transform: [{ scale: 0.96 }] }]}
+            >
+              <LinearGradient colors={[colors.terracotta, colors.terracottaDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.smallGradient}>
+                <CirclesPattern />
+                <View style={styles.smallInner}>
+                  <View style={styles.smallTagWrap}>
+                    <Text style={styles.smallTag}>COLORS</Text>
+                  </View>
+                  <View style={{ flex: 1 }} />
+                  <View style={styles.smallIconWrap}>
+                    <GamepadIcon size={20} color={colors.white} />
+                  </View>
+                  <Text style={styles.smallTitle}>Plataformas</Text>
+                  <Text style={styles.smallSub}>Say colors to jump!</Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+
+            {/* Notes */}
+            <Pressable
+              onPress={() => navigation.navigate('Notes')}
+              style={({ pressed }) => [styles.smallCard, pressed && { opacity: 0.9, transform: [{ scale: 0.96 }] }]}
+            >
+              <LinearGradient colors={[colors.marigold, colors.marigoldDark]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.smallGradient}>
+                <DotsPattern />
+                <View style={styles.smallInner}>
+                  <View style={styles.smallTagWrap}>
+                    <Text style={styles.smallTag}>REVIEW</Text>
+                  </View>
+                  <View style={{ flex: 1 }} />
+                  <View style={styles.smallIconWrap}>
+                    <NotesIcon size={20} color={colors.white} />
+                  </View>
+                  <Text style={styles.smallTitle}>My Notes</Text>
+                  <Text style={styles.smallSub}>Saved tips & vocab</Text>
+                </View>
+              </LinearGradient>
+            </Pressable>
+          </ScrollView>
+        </StaggerIn>
+
+        {/* ── Dillow CTA banner ── */}
+        <StaggerIn delay={540} style={{ marginTop: 28, paddingHorizontal: 20 }}>
+          <Pressable
+            onPress={() => navigation.navigate('DillowChat')}
+            style={({ pressed }) => [styles.dillowBanner, pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] }]}
+          >
+            <LinearGradient
+              colors={[colors.charcoal, colors.charcoalLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.dillowBannerGradient}
+            >
+              <DiagonalPattern />
+              <View style={styles.dillowBannerInner}>
+                <Text style={styles.dillowBannerEmoji}>🦜</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.dillowBannerTitle}>
+                    ¡Hola! <Text style={{ fontFamily: fonts.light, color: 'rgba(255,255,255,0.6)' }}>¿Cómo estuvo tu día?</Text>
+                  </Text>
+                  <Text style={styles.dillowBannerSub}>Dillow is ready to chat in Spanish or English</Text>
+                </View>
+                <ChevronRightIcon size={16} color="rgba(255,255,255,0.4)" />
+              </View>
+            </LinearGradient>
+          </Pressable>
+        </StaggerIn>
       </ScrollView>
 
       <BottomNav
-        activeTab={activeNav}
+        activeTab="home"
         onTabPress={(tabId) => {
-          if (tabId === 'chat') {
-            navigation.navigate('DillowChat');
-          } else if (tabId === 'learn') {
-            navigation.navigate('Lessons');
-          } else if (tabId === 'practice') {
-            navigation.navigate('Practice');
-          } else if (tabId === 'account') {
-            navigation.navigate('Account');
-          } else {
-            setActiveNav(tabId);
-          }
+          if (tabId === 'chat') navigation.navigate('DillowChat');
+          else if (tabId === 'learn') navigation.navigate('Lessons');
+          else if (tabId === 'practice') navigation.navigate('Practice');
+          else if (tabId === 'account') navigation.navigate('Account');
         }}
       />
     </View>
   );
 }
 
+/* ══════════════════════════════════════ */
+/* ── STYLES ─────────────────────────── */
+/* ══════════════════════════════════════ */
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
     backgroundColor: colors.cream,
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
 
-  // ── Header ──
+  /* ── Top bar ── */
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 24,
+    marginBottom: 20,
   },
   logo: {
     fontFamily: fonts.serif,
@@ -309,200 +482,167 @@ const styles = StyleSheet.create({
     fontSize: 38,
   },
 
-  // ── Greeting ──
-  greetingSection: {
-    marginBottom: 28,
-  },
-  greetingHello: {
+  /* ── Greeting ── */
+  greetingSub: {
     fontFamily: fonts.serifItalic,
-    fontSize: 18,
+    fontSize: 16,
     color: colors.warmGray,
     marginBottom: 2,
   },
   greetingName: {
     fontFamily: fonts.serif,
-    fontSize: 34,
+    fontSize: 32,
     color: colors.charcoal,
-    lineHeight: 38,
-  },
-  greetingSub: {
-    fontSize: 14,
-    color: colors.warmGray,
-    marginTop: 6,
-    fontFamily: fonts.regular,
+    lineHeight: 36,
   },
 
-  // ── Progress ──
-  progressSection: {
-    marginBottom: 28,
-  },
-  progressBarBg: {
-    width: '100%',
-    height: 8,
-    backgroundColor: colors.creamDark,
-    borderRadius: 4,
+  /* ── Hero cards ── */
+  heroCard: {
+    width: HERO_CARD_W,
+    height: HERO_CARD_W * 0.72,
+    borderRadius: radii.xxl,
+    marginRight: 14,
     overflow: 'hidden',
-    marginTop: 10,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.2, shadowRadius: 16 },
+      android: { elevation: 8 },
+    }),
   },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-    backgroundColor: colors.teal,
-  },
-  progressStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 8,
-  },
-  progressStat: {
-    fontSize: 12,
-    color: colors.warmGray,
-    fontFamily: fonts.regular,
-  },
-  progressStatBold: {
-    color: colors.charcoal,
-    fontFamily: fonts.semiBold,
-  },
-
-  // ── Dillow Card ──
-  dillowPressable: {
-    marginBottom: 24,
+  heroGradient: {
+    flex: 1,
     borderRadius: radii.xxl,
-    shadowColor: colors.tealDark,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 32,
-    elevation: 10,
-  },
-  dillowPressed: {
-    transform: [{ scale: 0.98 }],
-  },
-  dillowCard: {
-    borderRadius: radii.xxl,
-    padding: 24,
     overflow: 'hidden',
   },
-  dillowGlow: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(232,168,56,0.15)',
+  heroInner: {
+    flex: 1,
+    padding: 22,
   },
-  dillowTop: {
+  heroTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
+    justifyContent: 'space-between',
+  },
+  heroIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroBadge: {
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  heroBadgeText: {
+    fontFamily: fonts.semiBold,
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 1,
+  },
+  heroTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 24,
+    color: colors.white,
+    marginBottom: 3,
+  },
+  heroSubtitle: {
+    fontFamily: fonts.light,
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.65)',
     marginBottom: 16,
   },
-  dillowInfo: {
-    flex: 1,
-  },
-  dillowTitle: {
-    fontFamily: fonts.serif,
-    fontSize: 22,
-    color: colors.cream,
-  },
-  dillowSubtitle: {
-    fontSize: 13,
-    color: 'rgba(245,237,224,0.65)',
-    fontFamily: fonts.light,
-  },
-  dillowBubble: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    borderBottomRightRadius: 16,
-    borderBottomLeftRadius: 4,
-    padding: 14,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  dillowBubbleText: {
-    color: colors.cream,
-    fontSize: 15,
-    fontFamily: fonts.light,
-    lineHeight: 22,
-  },
-  dillowBubbleEmphasis: {
-    color: colors.marigoldLight,
-    fontFamily: fonts.medium,
-  },
-  dillowCta: {
-    flexDirection: 'row',
+  heroBtn: {
+    backgroundColor: colors.white,
+    borderRadius: radii.md,
+    paddingVertical: 12,
     alignItems: 'center',
-    gap: 8,
-    marginTop: 16,
   },
-  dillowCtaText: {
-    color: colors.marigoldLight,
-    fontFamily: fonts.medium,
-    fontSize: 14,
-  },
-
-  // ── Section Headers ──
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-  },
-  sectionTitle: {
-    fontFamily: fonts.serif,
-    fontSize: 22,
+  heroBtnText: {
+    fontFamily: fonts.bold,
+    fontSize: 16,
     color: colors.charcoal,
   },
 
-  // ── Phrase Card ──
+  /* ── Stats bar ── */
+  statsBar: {
+    flexDirection: 'row',
+    backgroundColor: colors.creamLight,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: colors.creamDark,
+    paddingVertical: 16,
+  },
+  statItem: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  statValue: {
+    fontFamily: fonts.bold,
+    fontSize: 20,
+    color: colors.charcoal,
+    marginBottom: 2,
+  },
+  statLabel: {
+    fontFamily: fonts.light,
+    fontSize: 10,
+    color: colors.warmGray,
+    letterSpacing: 0.3,
+  },
+  statDivider: {
+    width: 1,
+    backgroundColor: colors.creamDark,
+    marginVertical: 4,
+  },
+
+  /* ── Phrase card ── */
   phraseCard: {
     backgroundColor: colors.creamLight,
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: colors.creamDark,
     borderRadius: radii.xl,
     padding: 22,
-    marginBottom: 24,
+    marginHorizontal: 20,
   },
-  phraseCardPressed: {
-    borderColor: colors.marigold,
-  },
-  phraseLabel: {
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(194,85,58,0.08)',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: radii.sm,
+  phraseTop: {
+    flexDirection: 'row',
     marginBottom: 10,
   },
-  phraseLabelText: {
-    fontSize: 11,
+  phraseLevelBadge: {
+    backgroundColor: 'rgba(194,85,58,0.08)',
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+  },
+  phraseLevelText: {
     fontFamily: fonts.semiBold,
-    textTransform: 'uppercase',
-    letterSpacing: 1.2,
+    fontSize: 10,
     color: colors.terracotta,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
   phraseSpanish: {
     fontFamily: fonts.serif,
     fontSize: 26,
     color: colors.charcoal,
-    marginBottom: 6,
     lineHeight: 32,
+    marginBottom: 6,
   },
   phraseEnglish: {
+    fontFamily: fonts.light,
     fontSize: 15,
     color: colors.warmGray,
-    fontFamily: fonts.light,
   },
   phraseTap: {
+    fontFamily: fonts.regular,
     fontSize: 12,
     color: colors.warmGrayLight,
-    marginTop: 10,
-    fontFamily: fonts.regular,
     fontStyle: 'italic',
+    marginTop: 6,
   },
-  phraseNav: {
+  phraseDots: {
     flexDirection: 'row',
     gap: 6,
     marginTop: 14,
@@ -519,48 +659,93 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // ── Quick Actions ──
-  quickGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 14,
-    marginBottom: 28,
+  /* ── Small cards ── */
+  smallCard: {
+    width: SMALL_CARD_W,
+    height: SMALL_CARD_W * 1.15,
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+    marginRight: 14,
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+      android: { elevation: 6 },
+    }),
   },
-  quickCard: {
-    width: (SCREEN_WIDTH - 54) / 2,
-    backgroundColor: colors.creamLight,
-    borderWidth: 1.5,
-    borderColor: colors.creamDark,
-    borderRadius: radii.lg,
-    padding: 20,
-    paddingHorizontal: 18,
+  smallGradient: {
+    flex: 1,
+    borderRadius: radii.xl,
+    overflow: 'hidden',
   },
-  quickCardPressed: {
-    transform: [{ scale: 0.96 }],
-    shadowColor: colors.charcoal,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 24,
-    elevation: 6,
+  smallInner: {
+    flex: 1,
+    padding: 16,
+    justifyContent: 'flex-end',
   },
-  quickIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: radii.md,
+  smallTagWrap: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 5,
+  },
+  smallTag: {
+    fontFamily: fonts.semiBold,
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 1.2,
+  },
+  smallIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 12,
+    marginBottom: 8,
   },
-  quickCardTitle: {
+  smallTitle: {
+    fontFamily: fonts.bold,
+    fontSize: 15,
+    color: colors.white,
+    marginBottom: 2,
+  },
+  smallSub: {
+    fontFamily: fonts.light,
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.7)',
+  },
+
+  /* ── Dillow banner ── */
+  dillowBanner: {
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 10 },
+      android: { elevation: 5 },
+    }),
+  },
+  dillowBannerGradient: {
+    borderRadius: radii.xl,
+    overflow: 'hidden',
+  },
+  dillowBannerInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 18,
+    gap: 14,
+  },
+  dillowBannerEmoji: {
+    fontSize: 30,
+  },
+  dillowBannerTitle: {
     fontFamily: fonts.semiBold,
     fontSize: 15,
-    color: colors.charcoal,
-    marginBottom: 3,
+    color: colors.white,
+    marginBottom: 2,
   },
-  quickCardDesc: {
-    fontSize: 12,
-    color: colors.warmGray,
+  dillowBannerSub: {
     fontFamily: fonts.light,
-    lineHeight: 17,
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.5)',
   },
 });
