@@ -19,6 +19,7 @@ import {
 } from '../store/lessonProgress';
 import { ChevronLeftIcon, CheckCircleIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon } from '../components/Icons';
 import FadeIn from '../components/FadeIn';
+import DiscussionSection from '../components/DiscussionSection';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -119,6 +120,11 @@ export default function LessonDetailScreen() {
             </View>
           </FadeIn>
         ))}
+
+        {/* Community Discussion */}
+        <FadeIn delay={200 + lesson.content.length * 100 + 100}>
+          <DiscussionSection contentType="lesson" contentId={lessonId} />
+        </FadeIn>
       </ScrollView>
 
       {/* Bottom action */}

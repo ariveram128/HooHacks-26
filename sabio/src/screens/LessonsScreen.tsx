@@ -686,6 +686,7 @@ export default function LessonsScreen() {
             if (tabId === 'home') navigation.navigate('Home');
             else if (tabId === 'chat') navigation.navigate('DillowChat');
             else if (tabId === 'practice') navigation.navigate('Practice');
+            else if (tabId === 'account') navigation.navigate('Account');
           }}
         />
       </View>

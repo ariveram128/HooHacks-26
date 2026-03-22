@@ -68,8 +68,8 @@ const quickActions: QuickAction[] = [
     accentColor: colors.marigold,
   },
   {
-    title: 'Social',
-    desc: 'Ask a native speaker',
+    title: 'Account',
+    desc: 'Profile & settings',
     icon: <UsersIcon size={22} color={colors.white} />,
     iconBg: colors.charcoal,
     accentColor: colors.charcoal,
@@ -107,7 +107,13 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.greetingSection}>
-            <Text style={styles.greetingHello}>Buenas tardes,</Text>
+            <Text style={styles.greetingHello}>
+              {new Date().getHours() < 12
+                ? 'Buenos días,'
+                : new Date().getHours() < 19
+                  ? 'Buenas tardes,'
+                  : 'Buenas noches,'}
+            </Text>
             <Text style={styles.greetingName}>{userName}</Text>
             <Text style={styles.greetingSub}>
               You're 34% through this week's goals
@@ -241,6 +247,7 @@ export default function HomeScreen() {
                 onPress={() => {
                   if (action.title === 'Lessons') navigation.navigate('Lessons');
                   else if (action.title === 'Practice') navigation.navigate('Practice');
+                  else if (action.title === 'Account') navigation.navigate('Account');
                 }}
               >
                 <View style={[styles.quickIcon, { backgroundColor: action.iconBg }]}>
@@ -296,6 +303,8 @@ export default function HomeScreen() {
             navigation.navigate('Lessons');
           } else if (tabId === 'practice') {
             navigation.navigate('Practice');
+          } else if (tabId === 'account') {
+            navigation.navigate('Account');
           } else {
             setActiveNav(tabId);
           }
