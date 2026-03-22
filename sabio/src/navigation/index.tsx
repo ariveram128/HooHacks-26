@@ -15,6 +15,7 @@ import LessonDetailScreen from '../screens/LessonDetailScreen';
 import PracticeScreen from '../screens/PracticeScreen';
 import PhrasePracticeScreen from '../screens/PhrasePracticeScreen';
 import ColorGameScreen from '../screens/ColorGameScreen';
+import AccountScreen from '../screens/AccountScreen';
 
 export type AuthStackParamList = {
   Login: undefined;
@@ -30,6 +31,7 @@ export type RootStackParamList = {
   Practice: undefined;
   PhrasePractice: undefined;
   ColorGame: undefined;
+  Account: undefined;
 };
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
@@ -85,6 +87,11 @@ function MainNavigator() {
       <MainStack.Screen
         name="ColorGame"
         component={ColorGameScreen}
+        options={{ animation: 'slide_from_right', gestureEnabled: true }}
+      />
+      <MainStack.Screen
+        name="Account"
+        component={AccountScreen}
         options={{ animation: 'slide_from_right', gestureEnabled: true }}
       />
     </MainStack.Navigator>

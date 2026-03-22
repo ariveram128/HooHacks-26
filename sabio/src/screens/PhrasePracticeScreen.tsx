@@ -7,14 +7,17 @@ import {
   Animated,
   Easing,
   Dimensions,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
-import { ChevronLeftIcon, MicIcon, CheckCircleIcon, CloseIcon } from '../components/Icons';
+import { ChevronLeftIcon, MicIcon, CheckCircleIcon, CloseIcon, ChatIcon } from '../components/Icons';
 import FadeIn from '../components/FadeIn';
+import DiscussionSection from '../components/DiscussionSection';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
@@ -50,6 +53,7 @@ export default function PhrasePracticeScreen() {
   const [streak, setStreak] = useState(0);
   const [masteredIds, setMasteredIds] = useState<Set<string>>(new Set());
   const [finished, setFinished] = useState(false);
+  const [showDiscussion, setShowDiscussion] = useState(false);
 
   const cardAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
@@ -235,8 +239,13 @@ export default function PhrasePracticeScreen() {
             {currentIdx + 1} / {totalInSession}
           </Text>
         </View>
-        <View style={styles.streakPill}>
-          <Text style={styles.streakText}>🔥 {streak}</Text>
+        <View style={styles.headerRight}>
+          <Pressable onPress={() => setShowDiscussion(true)} hitSlop={8} style={styles.discussBtn}>
+            <ChatIcon size={18} color={colors.warmGray} />
+          </Pressable>
+          <View style={styles.streakPill}>
+            <Text style={styles.streakText}>🔥 {streak}</Text>
+          </View>
         </View>
       </View>
 
@@ -330,6 +339,25 @@ export default function PhrasePracticeScreen() {
           </Pressable>
         ) : null}
       </View>
+
+      {/* Discussion Modal */}
+      <Modal visible={showDiscussion} animationType="slide" transparent>
+        <View style={styles.discussOverlay}>
+          <View style={[styles.discussSheet, { paddingBottom: insets.bottom + 16 }]}>
+            <View style={styles.discussHeader}>
+              <Text style={styles.discussTitle}>
+                {currentPhrase.spanish}
+              </Text>
+              <Pressable onPress={() => setShowDiscussion(false)} hitSlop={8}>
+                <CloseIcon size={20} color={colors.charcoal} />
+              </Pressable>
+            </View>
+            <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+              <DiscussionSection contentType="phrase" contentId={currentPhrase.id} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -544,5 +572,45 @@ const styles = StyleSheet.create({
     fontFamily: fonts.semiBold,
     fontSize: 16,
     color: colors.white,
+  },
+
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  discussBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: colors.creamDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discussOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(42,35,32,0.5)',
+    justifyContent: 'flex-end',
+  },
+  discussSheet: {
+    backgroundColor: colors.cream,
+    borderTopLeftRadius: radii.xxl,
+    borderTopRightRadius: radii.xxl,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    maxHeight: '75%',
+  },
+  discussHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  discussTitle: {
+    fontFamily: fonts.serif,
+    fontSize: 18,
+    color: colors.charcoal,
+    flex: 1,
+    marginRight: 12,
   },
 });

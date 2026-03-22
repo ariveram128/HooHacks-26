@@ -136,6 +136,7 @@ export default function PracticeScreen() {
           if (tabId === 'home') navigation.navigate('Home');
           else if (tabId === 'chat') navigation.navigate('DillowChat');
           else if (tabId === 'learn') navigation.navigate('Lessons');
+          else if (tabId === 'account') navigation.navigate('Account');
         }}
       />
     </View>

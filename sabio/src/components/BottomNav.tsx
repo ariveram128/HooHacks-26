@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { HomeIcon, BookIcon, ChatIcon, MicIcon, UsersIcon } from './Icons';
+import { HomeIcon, BookIcon, ChatIcon, MicIcon, UserIcon } from './Icons';
 import { colors, fonts } from '../theme';
 
 type NavItem = {
@@ -15,7 +15,7 @@ const navItems: NavItem[] = [
   { id: 'learn', label: 'Learn', icon: ({ color }) => <BookIcon size={22} color={color} /> },
   { id: 'chat', label: 'Dillow', icon: ({ color }) => <ChatIcon size={22} color={color} /> },
   { id: 'practice', label: 'Practice', icon: ({ color }) => <MicIcon size={22} color={color} /> },
-  { id: 'social', label: 'Social', icon: ({ color }) => <UsersIcon size={22} color={color} /> },
+  { id: 'account', label: 'Account', icon: ({ color }) => <UserIcon size={22} color={color} /> },
 ];
 
 type BottomNavProps = {
