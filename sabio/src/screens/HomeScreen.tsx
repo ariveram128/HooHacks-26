@@ -19,8 +19,6 @@ import {
   BookIcon,
   MicIcon,
   UsersIcon,
-  ForumIcon,
-  VideoIcon,
   ChevronRightIcon,
 } from '../components/Icons';
 import { colors, fonts, radii } from '../theme';
@@ -249,39 +247,6 @@ export default function HomeScreen() {
                 <Text style={styles.quickCardDesc}>{action.desc}</Text>
               </Pressable>
             ))}
-          </View>
-        </FadeIn>
-
-        {/* ─── Forum & Video Row ─── */}
-        <FadeIn delay={650}>
-          <View style={styles.featureRow}>
-            <Pressable
-              style={({ pressed }) => [
-                styles.featureCard,
-                pressed && styles.featureCardPressed,
-              ]}
-              onPress={() => {}}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: 'rgba(26,107,94,0.1)' }]}>
-                <ForumIcon size={24} color={colors.teal} />
-              </View>
-              <Text style={styles.featureCardTitle}>Foro</Text>
-              <Text style={styles.featureCardDesc}>Community discussions</Text>
-            </Pressable>
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.featureCard,
-                pressed && styles.featureCardPressed,
-              ]}
-              onPress={() => {}}
-            >
-              <View style={[styles.featureIcon, { backgroundColor: 'rgba(194,85,58,0.1)' }]}>
-                <VideoIcon size={24} color={colors.terracotta} />
-              </View>
-              <Text style={styles.featureCardTitle}>Video</Text>
-              <Text style={styles.featureCardDesc}>Watch & learn clips</Text>
-            </Pressable>
           </View>
         </FadeIn>
       </ScrollView>
@@ -589,43 +554,5 @@ const styles = StyleSheet.create({
     color: colors.warmGray,
     fontFamily: fonts.light,
     lineHeight: 17,
-  },
-
-  // ── Feature Row ──
-  featureRow: {
-    flexDirection: 'row',
-    gap: 14,
-    marginBottom: 28,
-  },
-  featureCard: {
-    flex: 1,
-    backgroundColor: colors.creamLight,
-    borderWidth: 1.5,
-    borderColor: colors.creamDark,
-    borderRadius: radii.lg,
-    padding: 20,
-    alignItems: 'center',
-  },
-  featureCardPressed: {
-    transform: [{ scale: 0.96 }],
-  },
-  featureIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 12,
-  },
-  featureCardTitle: {
-    fontFamily: fonts.semiBold,
-    fontSize: 14,
-    color: colors.charcoal,
-    marginBottom: 2,
-  },
-  featureCardDesc: {
-    fontSize: 11,
-    color: colors.warmGray,
-    fontFamily: fonts.light,
   },
 });
