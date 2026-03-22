@@ -685,6 +685,7 @@ export default function LessonsScreen() {
           onTabPress={(tabId) => {
             if (tabId === 'home') navigation.navigate('Home');
             else if (tabId === 'chat') navigation.navigate('DillowChat');
+            else if (tabId === 'practice') navigation.navigate('Practice');
           }}
         />
       </View>
