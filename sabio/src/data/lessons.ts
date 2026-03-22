@@ -36,8 +36,21 @@ export const lessons: Lesson[] = [
     icon: '🔤',
     content: [
       {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover the Spanish alphabet, including the special letter ñ and how each letter is pronounced differently from English.',
+        heading: 'The Spanish Alphabet',
+        body: 'The Spanish alphabet has all of the same letters as English plus one extra: ñ. The beauty of Spanish is that every letter has a consistent pronunciation, meaning it is pronounced every time, no matter what the context is. Once you know the sounds, you can read any word aloud and start sounding like a Spanish speaker right away.',
+      },
+      {
+        heading: 'Vowels: The Foundation',
+        body: 'Spanish has five vowels:\n\n• A - "ah" sound in "father"\n• E - "eh" sound in "pet"\n• I - "ee" sound in "machine"\n• O - "oh" sound in "go"\n• U - "oo" sound in "flute"\n\nA key part of Spanish pronunciation is keeping vowels brief. For example, the "o" sound is not quite like "oh" in English. The mouth should be fixed and form a crisp "o" sound. Additionally, it is important to stress every vowel in every word, much unlike English.',
+      },
+      {
+        heading: 'Consonants That Differ from English',
+        body: 'Most consonants sound similar to English, but a few are much different:\n\n• H - silent. "Hola" is pronounced "oh-lah."\n• J - an "h" sound but with more of a throat sound.\n• LL - pronounced like "y" in most countries, though some pronounce it more like a "j".\n• Ñ - like "ny" in "canyon."\n• R - a single tap of the tongue like the "tt" in "butter".\n• RR - a rolled "r." Many who are not native speakers cannot make this sound, and that is okay! There are many tutortials on Youtube to learn, but people will understand you almost every time even if you can\'t do it.\n• V - pronounced the same as B.',
+      },
+      {
+        heading: 'More on Pronunciation',
+        body: 'You now know the key pronunciations in Spanish! Still, we suggest that you listen carefully to fluent speakers, as almost every letter is at least a littler different from English and the cadence can be much different. Then, practice speaking!',
+        practiceLink: { label: 'Practice with Dillow', screen: 'DillowChat' },
       },
     ],
   },
@@ -49,8 +62,25 @@ export const lessons: Lesson[] = [
     icon: '🔢',
     content: [
       {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain the logic behind Spanish numbers — how they form patterns and how counting works from 0 to millions.',
+        heading: 'Numbers 0–15: Just Memorize These',
+        body: 'The first sixteen numbers are unique words you need to learn by heart:\n\n0 — cero\n1 — uno\n2 — dos\n3 — tres\n4 — cuatro\n5 — cinco\n6 — seis\n7 — siete\n8 — ocho\n9 — nueve\n10 — diez\n11 — once\n12 — doce\n13 — trece\n14 — catorce\n15 — quince',
+      },
+      {
+        heading: 'Numbers 16–29: The Combo Pattern',
+        body: 'From 16 to 29, numbers are formed by combining "dieci-" or "veinti-" with the ones digit, written as one word:\n\n16 — dieciséis (diez + y + seis)\n17 — diecisiete\n18 — dieciocho\n19 — diecinueve\n20 — veinte\n21 — veintiuno\n22 — veintidós\n23 — veintitrés\n24 — veinticuatro\n25 — veinticinco\n26 — veintiséis\n27 — veintisiete\n28 — veintiocho\n29 — veintinueve\n\nNotice the pattern: "veinti" + the ones digit, all as one word.',
+      },
+      {
+        heading: 'Numbers 30–99: "Y" in the Middle',
+        body: 'From 30 onward, the tens and ones are separate words joined by "y" (and):\n\n30 — treinta\n31 — treinta y uno\n40 — cuarenta\n50 — cincuenta\n60 — sesenta\n70 — setenta\n80 — ochenta\n90 — noventa\n\nExamples:\n• 43 — cuarenta y tres\n• 67 — sesenta y siete\n• 85 — ochenta y cinco\n\nThe pattern is always: [tens word] + y + [ones word].',
+      },
+      {
+        heading: 'Hundreds and Beyond',
+        body: '100 — cien (when alone) or ciento (when followed by more)\n200 — doscientos\n300 — trescientos\n500 — quinientos (not "cincocientos"!)\n700 — setecientos (not "sietecientos"!)\n900 — novecientos (not "nuevecientos"!)\n1,000 — mil\n1,000,000 — un millón\n\nExamples:\n• 101 — ciento uno\n• 256 — doscientos cincuenta y seis\n• 1.492 — mil cuatrocientos noventa y dos\n\nNote: Spanish uses periods for thousands and commas for decimals — the opposite of English!',
+      },
+      {
+        heading: 'Quick Tips',
+        body: 'A few things to watch for:\n\n• "Uno" becomes "un" before masculine nouns: "un libro" (one book)\n• "Uno" becomes "una" before feminine nouns: "una mesa" (one table)\n• Hundreds agree in gender: "doscientos libros" but "doscientas mesas"\n• "Millón" needs "de" before a noun: "un millón de personas" (a million people)\n\nTry counting everyday objects in Spanish — it is the fastest way to make numbers automatic!',
+        practiceLink: { label: 'Practice with Dillow', screen: 'DillowChat' },
       },
     ],
   },
@@ -61,10 +91,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Pronunciation',
     icon: '🗣️',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will break down the five pure Spanish vowels, consonant differences from English, and the rules of syllable stress.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -74,10 +101,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Basic Greetings',
     icon: '👋',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will teach you the essential greetings and farewells, including when to use tú vs. usted.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -87,10 +111,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Introductions',
     icon: '🤝',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover how to introduce yourself and others, ask someone\'s name, and share where you\'re from.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
 
@@ -102,10 +123,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Articles',
     icon: '📝',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain el, la, los, las — why Spanish nouns have gender and how to choose the right article.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -115,10 +133,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Nouns & Gender',
     icon: '📌',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover noun gender rules, common exceptions, and how to make nouns plural.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -128,10 +143,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Personal Pronouns',
     icon: '👤',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will introduce yo, tú, él/ella, nosotros, vosotros, ellos/ellas — and when each is used or dropped.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -141,10 +153,7 @@ export const lessons: Lesson[] = [
     subtitle: 'To Be',
     icon: '⚖️',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will untangle the two Spanish verbs for "to be" — when to use ser (identity) vs. estar (state/location).',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -154,10 +163,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Regular Present Tense',
     icon: '⏰',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain how -ar, -er, and -ir verbs conjugate in the present tense and the logic behind the endings.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
 
@@ -169,10 +175,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Irregular Present Tense',
     icon: '🔀',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover stem-changing verbs, yo-irregular verbs, and the most common irregular verbs in daily Spanish.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -182,10 +185,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Asking Questions',
     icon: '❓',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will teach question formation — inversion, question words (qué, quién, dónde, cuándo, por qué, cómo), and intonation.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -195,10 +195,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Adjectives & Agreement',
     icon: '🎨',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain how adjectives agree with nouns in gender and number, and why they usually come after the noun.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -208,10 +205,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Preterite Past',
     icon: '⏪',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover the preterite tense — used for completed actions in the past, with regular and irregular conjugations.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -221,10 +215,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Imperfect Past',
     icon: '📖',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain the imperfect tense — used for habitual or ongoing past actions — and how it differs from the preterite.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
 
@@ -236,10 +227,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Simple Future',
     icon: '🔮',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will cover the simple future tense — adding endings to the full infinitive — and its irregular stems.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -249,10 +237,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Subjunctive Mood',
     icon: '💭',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will introduce the subjunctive — what triggers it (wishes, doubts, emotions) and how to form it in the present.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -262,10 +247,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Conditional',
     icon: '🔄',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explain the conditional tense — expressing "would" — and how it pairs with the subjunctive in if-clauses.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -275,10 +257,7 @@ export const lessons: Lesson[] = [
     subtitle: 'For / By / Through',
     icon: '↔️',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will demystify por and para — two prepositions both translated as "for" but with distinct uses in Spanish.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
   {
@@ -288,10 +267,7 @@ export const lessons: Lesson[] = [
     subtitle: 'Idioms & Expressions',
     icon: '💬',
     content: [
-      {
-        heading: 'Coming Soon',
-        body: 'This lesson will explore colorful Spanish idioms, their literal translations, and how to use them naturally in conversation.',
-      },
+      { heading: 'In Development', body: 'These lessons will be written after Hoo Hacks, look at the first two for a sample!' },
     ],
   },
 ];
