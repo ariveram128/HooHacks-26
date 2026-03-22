@@ -49,18 +49,17 @@ export default function LoginScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View style={[styles.container, { paddingTop: insets.top + 60, paddingBottom: insets.bottom + 20 }]}>
+      <View style={[styles.container, { marginTop:100, paddingTop: insets.top + 60, paddingBottom: 20 }]}>
         {/* Logo */}
         <View style={styles.logoWrap}>
           <Text style={styles.logo}>
             Sabio<Text style={styles.logoDot}>.</Text>
           </Text>
-          <Text style={styles.tagline}>Your Spanish companion</Text>
+          <Text style={styles.tagline}>Spanish your way.</Text>
         </View>
 
         {/* Form */}
         <View style={styles.form}>
-          <Text style={styles.heading}>Welcome back</Text>
 
           <View style={styles.inputWrap}>
             <Text style={styles.inputLabel}>Email</Text>
@@ -134,12 +133,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     paddingHorizontal: 28,
-    justifyContent: 'space-between',
   },
 
   logoWrap: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 0,
   },
   logo: {
     fontFamily: fonts.serif,
@@ -159,14 +157,7 @@ const styles = StyleSheet.create({
   },
 
   form: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  heading: {
-    fontFamily: fonts.serif,
-    fontSize: 30,
-    color: colors.charcoal,
-    marginBottom: 28,
+    marginTop: 32,
   },
   inputWrap: {
     marginBottom: 18,
@@ -182,8 +173,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.creamLight,
     borderWidth: 1.5,
     borderColor: colors.creamDark,
-    borderRadius: radii.md,
-    paddingVertical: 14,
+    borderRadius: radii.sm,
+    paddingBottom: 12,
     paddingHorizontal: 16,
     fontSize: 16,
     fontFamily: fonts.regular,
@@ -204,10 +195,10 @@ const styles = StyleSheet.create({
 
   submitBtn: {
     backgroundColor: colors.teal,
-    borderRadius: radii.md,
-    paddingVertical: 16,
+    borderRadius: radii.sm,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: 16,
     shadowColor: colors.tealDark,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
