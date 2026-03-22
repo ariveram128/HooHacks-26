@@ -8,6 +8,7 @@ import Svg, {
   Polygon,
 } from 'react-native-svg';
 import { colors } from '../theme';
+import { Ionicons } from '@expo/vector-icons';
 
 type IconProps = {
   size?: number;
@@ -46,14 +47,16 @@ export const BookIcon = ({ size = 24, color = 'currentColor', strokeWidth = 2 }:
   </Svg>
 );
 
-export const GamepadIcon = ({ size = 24, color = 'currentColor', strokeWidth = 2 }: IconProps) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-    <Line x1={6} y1={12} x2={10} y2={12} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    <Line x1={8} y1={10} x2={8} y2={14} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-    <Circle cx={15} cy={13} r={1} fill={color} stroke={color} strokeWidth={strokeWidth} />
-    <Circle cx={18} cy={11} r={1} fill={color} stroke={color} strokeWidth={strokeWidth} />
-    <Rect x={2} y={6} width={20} height={12} rx={3} stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
+export const GoNumberIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Ionicons name="keypad-outline" size={size} color={color} />
+);
+
+export const ScaleIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Ionicons name="scale-outline" size={size} color={color} />
+);
+
+export const SwapIcon = ({ size = 24, color = 'currentColor' }: IconProps) => (
+  <Ionicons name="swap-horizontal-outline" size={size} color={color} />
 );
 
 export const MicIcon = ({ size = 24, color = 'currentColor', strokeWidth = 2 }: IconProps) => (

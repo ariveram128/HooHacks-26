@@ -11,7 +11,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation';
 import { colors, fonts, spacing, radii } from '../theme';
-import { MicIcon, GamepadIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
+import { MicIcon, GoNumberIcon, ChevronLeftIcon, ChevronRightIcon } from '../components/Icons';
 import BottomNav from '../components/BottomNav';
 import FadeIn from '../components/FadeIn';
 import { getProgress, PracticeProgress } from '../store/practiceProgress';
@@ -109,7 +109,7 @@ export default function PracticeScreen() {
           >
             <View style={styles.cardHeader}>
               <View style={[styles.cardIconWrap, { backgroundColor: colors.terracotta }]}>
-                <GamepadIcon size={26} color={colors.white} />
+                <GoNumberIcon size={26} color={colors.white} />
               </View>
               <ChevronRightIcon size={20} color={colors.warmGrayLight} />
             </View>

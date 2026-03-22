@@ -17,7 +17,7 @@ import {
   isCompleted,
   setLastViewed,
 } from '../store/lessonProgress';
-import { ChevronLeftIcon, CheckCircleIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon } from '../components/Icons';
+import { ChevronLeftIcon, CheckCircleIcon, BookIcon, NotesIcon, ChatIcon, GoNumberIcon } from '../components/Icons';
 import FadeIn from '../components/FadeIn';
 import DiscussionSection from '../components/DiscussionSection';
 
@@ -87,7 +87,7 @@ export default function LessonDetailScreen() {
             <View style={styles.lessonIconWrap}>
               {lesson.sectionId === 'brotes' ? <NotesIcon size={30} color={colors.white} /> :
                lesson.sectionId === 'ramas' ? <ChatIcon size={30} color={colors.white} /> :
-               lesson.sectionId === 'copa' ? <GamepadIcon size={30} color={colors.white} /> :
+               lesson.sectionId === 'copa' ? <GoNumberIcon size={30} color={colors.white} /> :
                <BookIcon size={30} color={colors.white} />}
             </View>
             <Text style={styles.lessonTitle}>{lesson.title}</Text>

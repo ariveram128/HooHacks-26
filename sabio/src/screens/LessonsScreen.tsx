@@ -26,7 +26,7 @@ import { colors, fonts, spacing, radii } from '../theme';
 import { lessons, sections, Lesson } from '../data/lessons';
 import { getProgress, LessonProgress } from '../store/lessonProgress';
 import BottomNav from '../components/BottomNav';
-import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GamepadIcon, MicIcon, UsersIcon, PlayIcon, CheckCircleIcon } from '../components/Icons';
+import { ChevronLeftIcon, ChevronRightIcon, BookIcon, NotesIcon, ChatIcon, GoNumberIcon, MicIcon, UsersIcon, PlayIcon, ScaleIcon, SwapIcon } from '../components/Icons';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -42,7 +42,7 @@ const AMPLITUDE = SCREEN_W * 0.14;
 const FREQUENCY = 0.0038;
 const NODE_SPACING = 155;
 const TOP_PADDING = 160;
-const CARD_W = 200;
+const CARD_W = 230;
 const CARD_MARGIN = 10;
 
 function vineX(y: number): number {
@@ -321,13 +321,13 @@ const SECTION_ICON: Record<string, (props: { size: number; color: string }) => R
   raices: (p) => <BookIcon {...p} />,
   brotes: (p) => <NotesIcon {...p} />,
   ramas: (p) => <ChatIcon {...p} />,
-  copa: (p) => <GamepadIcon {...p} />,
+  copa: (p) => <GoNumberIcon {...p} />,
 };
 
 const ICON: Record<string, (props: { size: number; color: string }) => React.ReactNode> = {
   // Raíces
   alfabeto: (p) => <BookIcon {...p} />,
-  numeros: (p) => <GamepadIcon {...p} />,
+  numeros: (p) => <GoNumberIcon {...p} />,
   pronunciacion: (p) => <MicIcon {...p} />,
   saludos: (p) => <ChatIcon {...p} />,
   presentaciones: (p) => <UsersIcon {...p} />,
@@ -335,10 +335,10 @@ const ICON: Record<string, (props: { size: number; color: string }) => React.Rea
   articulos: (p) => <NotesIcon {...p} />,
   sustantivos: (p) => <BookIcon {...p} />,
   pronombres: (p) => <UsersIcon {...p} />,
-  'ser-estar': (p) => <CheckCircleIcon {...p} />,
+  'ser-estar': (p) => <ScaleIcon {...p} />,
   'presente-regular': (p) => <PlayIcon {...p} />,
   // Ramas
-  'presente-irregular': (p) => <GamepadIcon {...p} />,
+  'presente-irregular': (p) => <GoNumberIcon {...p} />,
   preguntas: (p) => <ChatIcon {...p} />,
   adjetivos: (p) => <NotesIcon {...p} />,
   preterito: (p) => <BookIcon {...p} />,
@@ -346,8 +346,8 @@ const ICON: Record<string, (props: { size: number; color: string }) => React.Rea
   // Copa
   futuro: (p) => <PlayIcon {...p} />,
   subjuntivo: (p) => <ChatIcon {...p} />,
-  condicional: (p) => <GamepadIcon {...p} />,
-  'por-para': (p) => <CheckCircleIcon {...p} />,
+  condicional: (p) => <GoNumberIcon {...p} />,
+  'por-para': (p) => <SwapIcon {...p} />,
   expresiones: (p) => <MicIcon {...p} />,
 };
 
@@ -397,45 +397,6 @@ const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress 
         zIndex: 10,
       }}
     >
-      {/* Dashed connector */}
-      <View
-        style={{
-          position: 'absolute',
-          top: '50%',
-          left: side > 0 ? -42 : undefined,
-          right: side < 0 ? -42 : undefined,
-          width: 36,
-          height: 1,
-          borderStyle: 'dashed',
-          borderBottomWidth: 1.5,
-          borderColor: isCompleted || isCurrent
-            ? accent.bg + '55'
-            : colors.warmGrayLight + '55',
-        }}
-      />
-
-      {/* Connector dot on vine */}
-      <View
-        style={{
-          position: 'absolute',
-          top: '48%',
-          left: side > 0 ? -14 : undefined,
-          right: side < 0 ? -14 : undefined,
-          width: 9,
-          height: 9,
-          borderRadius: 4.5,
-          backgroundColor: dotColor,
-          ...Platform.select({
-            ios: {
-              shadowColor: dotColor,
-              shadowOffset: { width: 0, height: 0 },
-              shadowOpacity: isCurrent ? 0.6 : 0.3,
-              shadowRadius: isCurrent ? 6 : 3,
-            },
-            android: { elevation: 3 },
-          }),
-        }}
-      />
 
       <TouchableOpacity
         activeOpacity={0.85}
@@ -472,8 +433,8 @@ const LessonNode: React.FC<LessonNodeProps> = ({ lesson, index, status, onPress 
 
             {/* Text */}
             <View style={styles.cardTextWrap}>
-              <Text style={styles.cardTitle} numberOfLines={1}>{lesson.title}</Text>
-              <Text style={styles.cardSubtitle} numberOfLines={1}>{lesson.subtitle}</Text>
+              <Text style={styles.cardTitle}>{lesson.title}</Text>
+              <Text style={styles.cardSubtitle}>{lesson.subtitle}</Text>
               {isCurrent && (
                 <View style={[styles.continueBadge, { backgroundColor: colors.terracotta + '15' }]}>
                   <Text style={[styles.continueText, { color: colors.terracotta }]}>NEXT LESSON</Text>
@@ -649,9 +610,6 @@ export default function LessonsScreen() {
           </View>
 
           <ProgressBar progress={progressPct} />
-          <Text style={styles.progressLabel}>
-            {completedCount} of {lessons.length} lessons complete
-          </Text>
         </View>
       </LinearGradient>
 
@@ -749,12 +707,15 @@ const styles = StyleSheet.create({
     maxWidth: 500,
     alignSelf: 'center',
     width: '100%',
+    paddingTop: 20,
+    backgroundColor: colors.cream,
   },
   headerTop: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 8,
+    
   },
   backBtn: {
     width: 40,
