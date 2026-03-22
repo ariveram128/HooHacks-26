@@ -25,6 +25,7 @@ import {
 } from '../components/Icons';
 import { colors, fonts, radii } from '../theme';
 import type { RootStackParamList } from '../navigation';
+import { useAuth } from '../context/AuthContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -70,10 +71,12 @@ const quickActions: QuickAction[] = [
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const { user } = useAuth();
   const [activeNav, setActiveNav] = useState('home');
   const [phraseIndex, setPhraseIndex] = useState(0);
   const [showTranslation, setShowTranslation] = useState(false);
 
+  const userName = user?.user_metadata?.name || 'Welcome back';
   const currentPhrase = phrases[phraseIndex];
 
   return (
@@ -97,7 +100,7 @@ export default function HomeScreen() {
 
           <View style={styles.greetingSection}>
             <Text style={styles.greetingHello}>Buenas tardes,</Text>
-            <Text style={styles.greetingName}>Welcome back</Text>
+            <Text style={styles.greetingName}>{userName}</Text>
             <Text style={styles.greetingSub}>
               You're 34% through this week's goals
             </Text>
@@ -229,7 +232,7 @@ export default function HomeScreen() {
                 ]}
                 onPress={() => {
                   if (action.title === 'Lessons') navigation.navigate('Lessons');
-                  else if (action.title === 'Practice') navigation.navigate('DillowChat');
+                  else if (action.title === 'Practice') navigation.navigate('Practice');
                 }}
               >
                 <View style={[styles.quickIcon, { backgroundColor: action.iconBg }]}>
@@ -279,10 +282,12 @@ export default function HomeScreen() {
       <BottomNav
         activeTab={activeNav}
         onTabPress={(tabId) => {
-          if (tabId === 'chat' || tabId === 'practice') {
+          if (tabId === 'chat') {
             navigation.navigate('DillowChat');
           } else if (tabId === 'learn') {
             navigation.navigate('Lessons');
+          } else if (tabId === 'practice') {
+            navigation.navigate('Practice');
           } else {
             setActiveNav(tabId);
           }

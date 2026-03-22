@@ -17,6 +17,7 @@ import {
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
 import RootNavigator from './src/navigation';
+import { AuthProvider } from './src/context/AuthContext';
 import { colors } from './src/theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -45,10 +46,12 @@ export default function App() {
   return (
     <ElevenLabsProvider audioSessionConfig={{ allowMixingWithOthers: true }}>
       <SafeAreaProvider>
-        <View style={styles.root} onLayout={onLayoutRootView}>
-          <StatusBar style="dark" />
-          <RootNavigator />
-        </View>
+        <AuthProvider>
+          <View style={styles.root} onLayout={onLayoutRootView}>
+            <StatusBar style="dark" />
+            <RootNavigator />
+          </View>
+        </AuthProvider>
       </SafeAreaProvider>
     </ElevenLabsProvider>
   );
